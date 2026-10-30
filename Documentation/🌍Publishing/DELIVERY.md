@@ -6,9 +6,9 @@ This repo ships in three places, none with a page of its own (no live URL):
 
 | What | Built by | Lands |
 |---|---|---|
-| `csv_importer.rs` in the **orchestrator** | `MANAGEMENT.DataMigration` compiles it by `#[path]`; `oaRustCore` (NODE.BareMetal `SRC/Core`) re-exports that crate; `apkaudio-orchestrator` links it. `NODE.BareMetal/Docker/Dockerfile` copies `PODS/POD.THIN/Softapps` so the path resolves. | the **Node-BareMetal** container (`node-baremetal:local`); rebuild with `up-stack.sh NODE.BareMetal` |
+| `SRC/csv_importer.rs` in the **orchestrator** | `MANAGEMENT.DataMigration` compiles it by `#[path]`; `oaRustCore` (NODE.BareMetal `SRC/Core`) re-exports that crate; `apkaudio-orchestrator` links it. `NODE.BareMetal/Docker/Dockerfile` copies `PODS/POD.THIN/Softapps` so the path resolves. | the **Node-BareMetal** container (`node-baremetal:local`); rebuild with `up-stack.sh NODE.BareMetal` |
 | the **worker** `apk-worker-wireless-csv` | `Docker/Dockerfile` (repo-root context; links `apkaudio-contracts` and `apk-plugin-runner`); runtime `debian:bookworm-slim`, user `worker` | container **Worker-WIRELESS_CSV**, project `workers`, via `docker compose -f PODS/POD.workers/Docker/docker-compose.yml up -d --build`; healthcheck `apk-plugin-health` |
-| the files themselves | `PODS/POD.THIN/Softapps` copied into **WEB.Frontend-Assets**; the monorepo's FTPS job (`.github/workflows/ci.yml`) uploads the checkout to apk.audio | nothing there opens it — `display.json`'s `entry` is `csv_importer.rs` (`tech: rust`), and `requires` names the `wireless_csv` worker |
+| the files themselves | `PODS/POD.THIN/Softapps` copied into **WEB.Frontend-Assets**; the monorepo's FTPS job (`.github/workflows/ci.yml`) uploads the checkout to apk.audio | nothing there opens it — `display.json`'s `entry` is `SRC/csv_importer.rs` (`tech: rust`), and `requires` names the `wireless_csv` worker |
 
 Remote: `https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV.git` (no workflow of its own).
 

@@ -29,14 +29,14 @@ function, `classify_csv_str` in `csv_importer.rs`.
 
 | Path | What it is |
 |---|---|
-| `csv_importer.rs` | The importer. Compiled as module `csv_importer` of the `apkaudio-data-migration` crate. |
-| `test_csv_pattern_importer.rs` | A `[[bin]]` runner of that crate: parses six fixtures, prints a summary, exits 1 if any fails. |
+| `SRC/csv_importer.rs` | The importer. Compiled as module `csv_importer` of the `apkaudio-data-migration` crate. |
+| `SRC/test_csv_pattern_importer.rs` | A `[[bin]]` runner of that crate: parses six fixtures, prints a summary, exits 1 if any fails. |
 | `test_data/` | Fixtures: `report.csv`, `report_converted.csv`, `venue.csv`, `venue_data.csv`, `venue_converted.csv`, `SB PDF.csv`, and a Lectrosonics programming guide PDF. |
 | `IMPORT:file:CSV/` | The Python edge (`oaFileImportCSV`) from the desktop app this was lifted out of — see below. |
-| `SRC/` | The worker crate `apk-worker-wireless-csv` (PLAN-3423.01): `#[path]`s `csv_importer.rs` in and answers jobs on the bus. |
+| `SRC/` | The worker crate `apk-worker-wireless-csv` (PLAN-3423.01): `#[path]`s `csv_importer.rs` (beside its `Cargo.toml`) in and answers jobs on the bus. |
 | `Docker/` | The worker's `Dockerfile` (repo-root context) and `docker-compose.yml` (project `workers`, container `Worker-WIRELESS_CSV`), `include:`d by `PODS/POD.workers/Docker/docker-compose.yml`. |
 
-### `csv_importer.rs`
+### `SRC/csv_importer.rs`
 
 `classify_csv_str(text, source_name)` reads the header row, upper-cases it and picks a pattern.
 It has no side effect; `parse_and_classify_csv(path)` reads a file and calls it. Nothing in
@@ -147,7 +147,7 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
 ## 🚀 Usage & Integration
 * **Web Portal Entry**: none of its own. The records are drawn (from the worker's `incoming/result`) by the Data Migration frame
   `PODS/POD.THIN/WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/CSV_Importer.json`.
-  `display.json` declares the folder to the launcher with `entry: csv_importer.rs`, `tech: rust`
+  `display.json` declares the folder to the launcher with `entry: SRC/csv_importer.rs`, `tech: rust`
   (as DATATYPE.wireless.IAS does), and `requires: {plugins: [wireless_csv], services: [broker]}`,
   so the Launch Pad marks it *needs wireless_csv (not running)* when Worker-WIRELESS_CSV is down.
 * **Remote Repository**: `https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV.git`

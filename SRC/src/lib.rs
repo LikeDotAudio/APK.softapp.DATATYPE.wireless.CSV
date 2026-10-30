@@ -16,7 +16,7 @@
 //! run it on the fixtures in `../test_data/` with no broker anywhere near.
 //! [`run_job_agent`] is the thin loop that feeds it from MQTT.
 
-#[path = "../../csv_importer.rs"]
+#[path = "../csv_importer.rs"]
 pub mod csv_importer;
 pub mod self_test;
 

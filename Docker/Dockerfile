@@ -30,10 +30,9 @@ COPY ["contracts/tokens", "./PODS/POD.THICK/NODE.BareMetal/SRC/contracts/tokens"
 # for a crate that is not one of them.
 COPY ["PODS/POD.THICK/DISCOVERY.Engine/SRC/Cargo.toml", "./PODS/POD.THICK/DISCOVERY.Engine/SRC/Cargo.toml"]
 COPY ["PODS/POD.THICK/DISCOVERY.Engine/SRC/RUNNER",     "./PODS/POD.THICK/DISCOVERY.Engine/SRC/RUNNER"]
-# The tool: its parser at the repository root, and the worker crate in SRC/.
+# The tool: the worker crate in SRC/, with the parser (SRC/csv_importer.rs) in it.
 ARG TOOL=PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV
-COPY ["PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/csv_importer.rs", "./PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/csv_importer.rs"]
-COPY ["PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/SRC",             "./PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/SRC"]
+COPY ["PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/SRC", "./PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/SRC"]
 
 RUN cargo build --release --locked --manifest-path "$TOOL/SRC/Cargo.toml" --bins \
  && mkdir -p /out \

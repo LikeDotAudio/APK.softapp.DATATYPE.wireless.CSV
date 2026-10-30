@@ -1,7 +1,7 @@
 # apk-worker-wireless-csv — the CSV importer as a worker on the bus (PLAN-3423.01).
 #
 # Owns: the container entry point that answers `outgoing/job` with
-# `incoming/result` by running `../csv_importer.rs` — the same parser the
+# `incoming/result` by running `csv_importer.rs` (beside this manifest) — the same parser the
 # DataMigration crate compiles, pulled in by `#[path]`, not copied.
 #
 # BUILT ON apk-plugin-runner, the crate every THICK plugin links. The runner
