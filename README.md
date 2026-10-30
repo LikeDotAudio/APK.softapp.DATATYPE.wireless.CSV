@@ -47,9 +47,9 @@ source_name)` call it and then publish (below):
 | `UnknownCustom` — "Arbitrary Custom CSV" | anything else | the first cell per row that parses as 100–3000 MHz |
 
 Each row becomes a `StandardRfRecord { zone, group, device, channel_name, frequency_mhz, band }`.
-`band` is filled only by the Soundbase layout; the others leave it empty. Empty zone/group/device/
-name cells in the zone/group layout are filled with `N/A`, `General`, `Generic RF` and `CH_<n>`;
-the custom layout fills all four with fixed labels.
+`band` is filled only by the Soundbase layout; the others leave it empty. An empty
+zone/group/device/name cell stays empty, and the custom layout, which finds only a frequency,
+leaves all four empty — `pattern_name` already says what kind of file it was.
 
 **Every `parse_and_classify_*` call publishes; `classify_csv_str` does not.** The whole `CsvRecognizedResult` (status, source file, pattern, topic,
 count, records) goes out as pretty JSON, QoS 1, **retained**, to
@@ -157,9 +157,9 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
   `csv_importer_mqtt_topic()` and `publish_to_mqtt()`).
 - **Topics come from the contract, never typed out** (`apkaudio_contracts::topics::data_migration`,
   comment above `csv_importer_mqtt_topic()`).
-- **Do not invent a band.** Only the Soundbase layout has a band column; for the others `band` is
-  left empty "rather than invented" (`StandardRfRecord`). The same file does fill empty
-  zone/group/device/name cells with placeholder labels.
+- **Do not invent a value.** Only the Soundbase layout has a band column; for the others `band` is
+  left empty "rather than invented" (`StandardRfRecord`), and so is any zone/group/device/name
+  cell the file left empty (`classify_csv_str`; it once filled `N/A`, `Generic RF`, `CH_<n>`).
 - **One parser, no silent fallback.** The Python edge refuses to run without the Rust parser
   rather than quietly producing different records (`IMPORT:file:CSV/Entry.py`,
   `FileReaders/from_csv_unknown.py`, `Methods/csv_parser.py`; tested by

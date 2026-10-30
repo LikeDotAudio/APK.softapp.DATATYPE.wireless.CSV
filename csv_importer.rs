@@ -125,11 +125,13 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
 
                     if let Ok(freq) = freq_str.parse::<f64>() {
                         if freq > 100.0 && freq < 3000.0 {
+                            // An empty cell stays empty: "N/A", "General", "Generic RF" and
+                            // "CH_<n>" read downstream as things the file said.
                             records.push(StandardRfRecord {
-                                zone: if zone.is_empty() { "N/A".into() } else { zone },
-                                group: if group.is_empty() { "General".into() } else { group },
-                                device: if device.is_empty() { "Generic RF".into() } else { device },
-                                channel_name: if name.is_empty() { format!("CH_{}", records.len() + 1) } else { name },
+                                zone,
+                                group,
+                                device,
+                                channel_name: name,
                                 frequency_mhz: freq,
                                 band: String::new(),
                             });
@@ -144,11 +146,14 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
                 for cell in rec.iter() {
                     if let Ok(freq) = cell.trim().parse::<f64>() {
                         if freq > 100.0 && freq < 3000.0 {
+                            // Only the frequency was found; the rest is unknown, and left
+                            // empty rather than labelled ("Unknown Zone", "CH_<n>").
+                            // `pattern_name` already says this was an arbitrary CSV.
                             records.push(StandardRfRecord {
-                                zone: "Unknown Zone".into(),
-                                group: "Custom CSV".into(),
-                                device: "Generic".into(),
-                                channel_name: format!("CH_{}", records.len() + 1),
+                                zone: String::new(),
+                                group: String::new(),
+                                device: String::new(),
+                                channel_name: String::new(),
                                 frequency_mhz: freq,
                                 band: String::new(),
                             });
