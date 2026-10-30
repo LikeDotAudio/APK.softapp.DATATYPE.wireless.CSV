@@ -111,3 +111,7 @@ Checked 2026-10-30: 3 passed. `Tests/test_rust_csv_parser.py` does not collect h
   (`test_csv_pattern_importer.rs`); it used to print and exit 0.
 - **Keep going on a bad row.** Unreadable records and cells that are not a frequency in range
   are skipped, not fatal (`rdr.records().flatten()`, the 100–3000 MHz guard).
+
+<!-- wiki:smoke -->
+**Smoke test** — ✅ PASS 1/1 since 2026-10-30 12:51 EDT — [results](Documentation/%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)
+<!-- /wiki:smoke -->
