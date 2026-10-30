@@ -13,8 +13,9 @@
 CSV text ──▶ classify_csv_str()  (csv_importer.rs, no side effect)
                header row, upper-cased → SoundbaseReport | StandardZoneGroup | UnknownCustom
                each row → StandardRfRecord { zone, group, device, channel_name, frequency_mhz, band }
-          ├─▶ parse_and_classify_csv[_str]() → publish retained to …/DataMigration/CSV/ImportedData
-          │      called by NODE.BareMetal's data-migration daemon (oaRustCore::data_migration)
+               status "success" | "empty" (no records); skipped_rows = data rows with no record
+          ├─▶ NODE.BareMetal's data-migration daemon (oaRustCore::data_migration)
+          │      → publishes retained to …/DataMigration/CSV/ImportedData on its own session
           └─▶ SRC handle_job() → JSON answer on …/wireless_csv/incoming/result   (Worker-WIRELESS_CSV)
 ```
 
@@ -28,8 +29,8 @@ CSV text ──▶ classify_csv_str()  (csv_importer.rs, no side effect)
 
 | Path | What |
 |---|---|
-| `csv_importer.rs` | the parser and its publisher; module `csv_importer` of `MANAGEMENT.DataMigration` (`mod.rs`, `#[path]`) |
-| `test_csv_pattern_importer.rs` | `[[bin]]` runner over six fixtures; exits 1 on any failure; **publishes retained** |
+| `csv_importer.rs` | the parser (it publishes nothing); module `csv_importer` of `MANAGEMENT.DataMigration` (`mod.rs`, `#[path]`) |
+| `test_csv_pattern_importer.rs` | `[[bin]]` runner over six fixtures; exits 1 on any failure; publishes nothing |
 | `test_data/` | the fixtures (`report.csv`, `venue*.csv`, `SB PDF.csv`, …) |
 | `SRC/` | the worker crate `apk-worker-wireless-csv`: `lib.rs` (`handle_job`, `run_job_agent`), `self_test.rs`, `bin/apk-worker-wireless-csv.rs` (`apk_plugin_runner::main!`), `config.ini` (`max_job_bytes`) |
 | `Docker/` | the worker image and compose, `include:`d by `PODS/POD.workers/Docker/docker-compose.yml` |

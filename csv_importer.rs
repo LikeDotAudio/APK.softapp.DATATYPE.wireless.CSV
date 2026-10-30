@@ -1,12 +1,16 @@
 // Part of the APK.audio project — http://APK.audio — made by Anthony Kuzub
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
-//! Smart CSV Pattern Classifier & Importer written in Rust with MQTT Publishing.
+//! Smart CSV Pattern Classifier & Importer written in Rust.
+//!
+//! It parses; it does not publish. The orchestrator (`data_migration.rs`)
+//! publishes the result retained on `DataMigration/CSV/ImportedData`, and the
+//! worker (`SRC/`) answers a job with it. Nothing in this file opens a broker.
 
 use csv::ReaderBuilder;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use apkaudio_contracts::topics::{self, MQTT_DEFAULT_PORT, MQTT_LOOPBACK_HOST};
+use apkaudio_contracts::topics;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RecognizedCsvPattern {
@@ -36,6 +40,9 @@ pub struct CsvRecognizedResult {
     pub pattern_name: String,
     pub mqtt_topic: String,
     pub total_records: usize,
+    /// Data rows that yielded no record: unreadable, too short, or no
+    /// frequency in range. A blank line is not counted.
+    pub skipped_rows: usize,
     pub records: Vec<StandardRfRecord>,
 }
 
@@ -51,26 +58,16 @@ pub fn parse_and_classify_csv(file_path: impl AsRef<Path>) -> Result<CsvRecogniz
     let path = file_path.as_ref();
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read CSV file {:?}: {}", path, e))?;
-    parse_and_classify_csv_str(&content, &path.to_string_lossy())
-}
-
-/// Classify and parse, then publish the result retained on
-/// `DataMigration/CSV/ImportedData` — what the orchestrator's file-path import
-/// and the test runner call.
-pub fn parse_and_classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognizedResult, String> {
-    let result = classify_csv_str(content, source_name)?;
-    if let Ok(json_payload) = serde_json::to_string_pretty(&result) {
-        publish_to_mqtt(&csv_importer_mqtt_topic(), &json_payload);
-    }
-    Ok(result)
+    classify_csv_str(&content, &path.to_string_lossy())
 }
 
 /// Classify the layout and extract standard RF records. NO SIDE EFFECT.
 ///
-/// Split out of `parse_and_classify_csv_str` for the worker (`SRC/`,
-/// PLAN-3423.01), which answers a job on `incoming/result` and must not also
-/// overwrite the retained `ImportedData` document every time a browser asks
-/// for a parse. One parser either way: both entry points run this function.
+/// The one parser: the orchestrator's import, the worker (`SRC/`,
+/// PLAN-3423.01) and the test runner all run this function. Publishing is the
+/// caller's business (LOOSE-datatype-wireless-csv-held-by-session: it used to
+/// publish retained to the loopback broker itself, so a test run overwrote
+/// the live `ImportedData`).
 pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognizedResult, String> {
     let mut rdr = ReaderBuilder::new()
         .has_headers(true)
@@ -94,28 +91,35 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
     };
 
     let mut records = Vec::new();
+    let mut skipped_rows = 0usize;
+    // Every data row ends up a record or a skipped row; a blank line is neither.
+    let rows = rdr.records().filter_map(|r| match r {
+        Ok(rec) if rec.iter().all(|f| f.trim().is_empty()) => None,
+        other => Some(other.ok()),
+    });
 
     match pattern {
         RecognizedCsvPattern::SoundbaseReport => {
-            for rec in rdr.records().flatten() {
-                if rec.len() >= 7 {
-                    if let Ok(freq) = rec[6].trim().parse::<f64>() {
-                        // Header: Group, Model, Band, Name, Preset, Spacing, Frequency.
-                        // There is no zone column, so Group answers for both.
-                        records.push(StandardRfRecord {
-                            zone: rec[0].trim().to_string(),
-                            group: rec[0].trim().to_string(),
-                            device: rec[1].trim().to_string(),
-                            channel_name: rec[3].trim().to_string(),
-                            frequency_mhz: freq,
-                            band: rec[2].trim().to_string(),
-                        });
-                    }
-                }
+            for rec in rows {
+                let Some(rec) = rec else { skipped_rows += 1; continue };
+                let freq = if rec.len() >= 7 { rec[6].trim().parse::<f64>().ok() } else { None };
+                let Some(freq) = freq else { skipped_rows += 1; continue };
+                // Header: Group, Model, Band, Name, Preset, Spacing, Frequency.
+                // There is no zone column, so Group answers for both.
+                records.push(StandardRfRecord {
+                    zone: rec[0].trim().to_string(),
+                    group: rec[0].trim().to_string(),
+                    device: rec[1].trim().to_string(),
+                    channel_name: rec[3].trim().to_string(),
+                    frequency_mhz: freq,
+                    band: rec[2].trim().to_string(),
+                });
             }
         }
         RecognizedCsvPattern::StandardZoneGroup => {
-            for rec in rdr.records().flatten() {
+            for rec in rows {
+                let Some(rec) = rec else { skipped_rows += 1; continue };
+                let before = records.len();
                 if rec.len() >= 5 {
                     let zone = rec[0].trim().to_string();
                     let group = rec[1].trim().to_string();
@@ -138,10 +142,15 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
                         }
                     }
                 }
+                if records.len() == before {
+                    skipped_rows += 1;
+                }
             }
         }
         RecognizedCsvPattern::UnknownCustom => {
-            for rec in rdr.records().flatten() {
+            for rec in rows {
+                let Some(rec) = rec else { skipped_rows += 1; continue };
+                let before = records.len();
                 // Heuristic scan for frequency floats in cells
                 for cell in rec.iter() {
                     if let Ok(freq) = cell.trim().parse::<f64>() {
@@ -161,47 +170,45 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
                         }
                     }
                 }
+                if records.len() == before {
+                    skipped_rows += 1;
+                }
             }
         }
     }
 
     Ok(CsvRecognizedResult {
-        status: "success".to_string(),
+        status: status_for(records.len()),
         source_file: source_name.to_string(),
         pattern,
         pattern_name: pattern_name.to_string(),
         mqtt_topic: csv_importer_mqtt_topic(),
         total_records: records.len(),
+        skipped_rows,
         records,
     })
 }
 
-pub fn publish_to_mqtt(topic: &str, payload: &str) {
-    use rumqttc::{Client, MqttOptions, Event, Packet, QoS};
-    use std::time::Duration;
+/// "success" only when the file yielded records; a parse that found none is
+/// "empty", never a success the panel would draw as an imported, blank table
+/// (the rule `soundbase_importer.rs` already keeps).
+fn status_for(records: usize) -> String {
+    if records > 0 { "success" } else { "empty" }.to_string()
+}
 
-    let mut mqttoptions = MqttOptions::new("apkaudio-csv-importer", MQTT_LOOPBACK_HOST, MQTT_DEFAULT_PORT);
-    mqttoptions.set_keep_alive(Duration::from_secs(10));
-    if let Some((username, password)) = apkaudio_contracts::broker_auth::credentials() {
-        mqttoptions.set_credentials(username, password);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_file_with_no_records_is_empty_and_counts_its_dropped_rows() {
+        let r = classify_csv_str("ZONE,GROUP,DEVICE,NAME,FREQ\nA,G,D,N,50\n\nA,G,D,N,x\n", "t.csv").unwrap();
+        assert_eq!((r.status.as_str(), r.total_records, r.skipped_rows), ("empty", 0, 2));
     }
 
-    let (client, mut connection) = Client::new(mqttoptions, 10);
-    let _ = client.publish(topic, QoS::AtLeastOnce, true, payload.as_bytes());
-
-    let deadline = std::time::Instant::now() + Duration::from_secs(3);
-    let mut acked = false;
-    for notification in connection.iter() {
-        if let Ok(Event::Incoming(Packet::PubAck(_))) = notification {
-            println!("[SMART CSV MQTT PUBLISHER] Published & Acked by Broker ({MQTT_LOOPBACK_HOST}:{MQTT_DEFAULT_PORT}) Topic: '{}'", topic);
-            acked = true;
-            break;
-        }
-        if std::time::Instant::now() > deadline {
-            break;
-        }
-    }
-    if acked {
-        std::thread::sleep(Duration::from_millis(200));
+    #[test]
+    fn a_good_row_is_a_record_and_a_bad_one_is_skipped() {
+        let r = classify_csv_str("ZONE,GROUP,DEVICE,NAME,FREQ\nA,G,D,N,566.6\nshort\n", "t.csv").unwrap();
+        assert_eq!((r.status.as_str(), r.total_records, r.skipped_rows), ("success", 1, 1));
     }
 }

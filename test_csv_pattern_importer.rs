@@ -1,6 +1,8 @@
 // Part of the APK.audio project — http://APK.audio — made by Anthony Kuzub
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
-//! Standalone Test Runner for CSV Pattern Recognition & MQTT pipeline.
+//! Standalone Test Runner for CSV Pattern Recognition. It parses the fixtures and
+//! publishes nothing: the importer has no broker of its own, so a run cannot
+//! overwrite the live retained `DataMigration/CSV/ImportedData`.
 
 use std::path::Path;
 
@@ -31,7 +33,7 @@ fn main() {
             Ok(res) => {
                 println!("  └─ Recognized Pattern: [{}]", res.pattern_name);
                 println!("  └─ Total Records Extracted: {}", res.total_records);
-                println!("  └─ MQTT Topic: {}", res.mqtt_topic);
+                println!("  └─ Status: {} ({} row(s) skipped)", res.status, res.skipped_rows);
 
                 if let Some(sample) = res.records.first() {
                     println!("  └─ Sample Record: Zone='{}' | Group='{}' | Device='{}' | Name='{}' | Freq={:.3} MHz | Band='{}'",

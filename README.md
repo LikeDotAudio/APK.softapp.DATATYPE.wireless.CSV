@@ -1,7 +1,7 @@
 # DATATYPE.wireless.CSV
 
 > 📑 **Wireless CSV importer** — reads a wireless-coordination CSV, recognises which of three
-> layouts it is, turns it into channel records and publishes them on the bus. It also runs as
+> layouts it is and turns it into channel records, which the node publishes on the bus. It also runs as
 > the worker `Worker-WIRELESS_CSV` in `PODS/POD.workers`: a browser posts a CSV as a job on the
 > bus and gets the records back.
 >
@@ -39,8 +39,8 @@ function, `classify_csv_str` in `csv_importer.rs`.
 ### `csv_importer.rs`
 
 `classify_csv_str(text, source_name)` reads the header row, upper-cases it and picks a pattern.
-It has no side effect. `parse_and_classify_csv(path)` / `parse_and_classify_csv_str(text,
-source_name)` call it and then publish (below):
+It has no side effect; `parse_and_classify_csv(path)` reads a file and calls it. Nothing in
+`csv_importer.rs` publishes — the caller does (below):
 
 | Pattern | Recognised by | Columns read |
 |---|---|---|
@@ -53,17 +53,19 @@ Each row becomes a `StandardRfRecord { zone, group, device, channel_name, freque
 zone/group/device/name cell stays empty, and the custom layout, which finds only a frequency,
 leaves all four empty — `pattern_name` already says what kind of file it was.
 
-**Every `parse_and_classify_*` call publishes; `classify_csv_str` does not.** The whole `CsvRecognizedResult` (status, source file, pattern, topic,
-count, records) goes out as pretty JSON, QoS 1, **retained**, to
-`APK.audio/System/DataMigration/CSV/ImportedData` (built by
-`apkaudio_contracts::topics::data_migration("CSV", "ImportedData")`) on the loopback broker
-`MQTT_LOOPBACK_HOST:MQTT_DEFAULT_PORT`, with credentials from
-`apkaudio_contracts::broker_auth` when set. It waits up to 3 s for the PUBACK; no broker is not
-an error.
+`status` is `"success"` only when the file yielded records, `"empty"` otherwise (the rule
+`soundbase_importer.rs` keeps). `skipped_rows` counts the data rows that yielded no record —
+unreadable, too short, or no frequency in 100–3000 MHz; a blank line is not counted.
 
-Who calls it: `PODS/POD.THICK/NODE.BareMetal/SRC/Core/ORCHESTRATOR:hunter:VISA/src/services/data_migration.rs`
-subscribes to `APK.audio/System/DataMigration/+/FilePath` and hands a CSV payload to
-`oaRustCore::data_migration::csv_importer`.
+**The importer opens no broker.** `PODS/POD.THICK/NODE.BareMetal/SRC/Core/ORCHESTRATOR:hunter:VISA/src/services/data_migration.rs`
+subscribes to `APK.audio/System/DataMigration/+/FilePath`, runs `classify_csv_str` on the CSV
+payload and publishes the whole `CsvRecognizedResult` (status, source file, pattern, topic,
+counts, records) as pretty JSON, QoS 1, **retained**, on its own session to
+`APK.audio/System/DataMigration/CSV/ImportedData` (built by
+`apkaudio_contracts::topics::data_migration("CSV", "ImportedData")`). Until 2026-10-30 the
+importer also carried a publisher of its own (`parse_and_classify_csv_str`, `publish_to_mqtt`)
+to the loopback broker, which only the test runner still reached — so a test run overwrote the
+live retained document.
 
 ### The worker (`SRC/`, `Docker/`)
 
@@ -106,13 +108,13 @@ file in by `#[path]`, and `Cargo.toml` declares the runner as a `[[bin]]`:
 ```bash
 cd PODS/POD.THIN/Softapps/MANAGEMENT_AND_UTILITIES/MANAGEMENT.DataMigration
 cargo build --bin test_csv_pattern_importer
-cargo run   --bin test_csv_pattern_importer      # publishes to the local broker, retained
+cargo run   --bin test_csv_pattern_importer      # parses the fixtures; publishes nothing
 ```
 
 The runner reads its six fixtures from `../../DATATYPE/DATATYPE.wireless.CSV/test_data/` (until
 2026-10-30 it looked under `<MANAGEMENT.DataMigration>/DataMigration/4_CSV/`, which no longer
 exists, and failed all six). The importer reads `report.csv` 168 records, `venue*.csv` 253 each,
-`SB PDF.csv` 20 (Soundbase), `report_converted.csv` 0.
+`SB PDF.csv` 20 (Soundbase), `report_converted.csv` 0 (`status: "empty"`, 179 rows skipped).
 
 ### `IMPORT:file:CSV/` (Python)
 
@@ -138,8 +140,9 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
 ## 🚀 Usage & Integration
 * **Web Portal Entry**: none of its own. The records are drawn by the Data Migration frame
   `PODS/POD.THIN/WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/CSV_Importer.json`.
-  `display.json` declares the folder to the launcher; its `entry`, `main.py`, is not a file here,
-  so the launcher opens the folder itself.
+  `display.json` declares the folder to the launcher with `entry: csv_importer.rs`, `tech: rust`
+  (as DATATYPE.wireless.IAS does), and `requires: {plugins: [wireless_csv], services: [broker]}`,
+  so the Launch Pad marks it *needs wireless_csv (not running)* when Worker-WIRELESS_CSV is down.
 * **Remote Repository**: `https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV.git`
 
 ---
@@ -154,9 +157,9 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
   (`SRC/src/lib.rs`).
 - **A job is always answered.** Bad JSON, a missing body, bad base64 or an oversized CSV comes
   back as `ok: false` with an `error`, never as silence (`handle_job`, its tests).
-- **The bus is the API.** The importer's output is a retained message on a topic built from the
-  contract crate, not a return value another app links to (`csv_importer.rs`,
-  `csv_importer_mqtt_topic()` and `publish_to_mqtt()`).
+- **The bus is the API.** The importer's output reaches other apps as a retained message on a
+  topic built from the contract crate (`csv_importer_mqtt_topic()`), published by the node's
+  data-migration daemon, never by the parser itself.
 - **Topics come from the contract, never typed out** (`apkaudio_contracts::topics::data_migration`,
   comment above `csv_importer_mqtt_topic()`).
 - **Do not invent a value.** Only the Soundbase layout has a band column; for the others `band` is
