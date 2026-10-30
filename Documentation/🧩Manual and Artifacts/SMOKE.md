@@ -12,4 +12,4 @@ Is `DATATYPE.wireless.CSV` deployed? Written by `.apk.scripts/smoke.py` from the
 
 Re-run: `python3 .apk.scripts/smoke.py PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV`
 
-<!-- smoke:sig d69b0c1d3ab7 since 2026-10-30 12:51 EDT -->
+<!-- smoke:sig 42d04b1da268 since 2026-10-30 12:51 EDT -->
