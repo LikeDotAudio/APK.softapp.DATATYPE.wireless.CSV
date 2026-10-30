@@ -4,6 +4,8 @@
 > layouts it is, turns it into channel records and publishes them on the bus. It also runs as
 > the worker `Worker-WIRELESS_CSV` in `PODS/POD.workers`: a browser posts a CSV as a job on the
 > bus and gets the records back.
+>
+> 📚 **Wiki:** [Documentation/README.md](Documentation/README.md) — principles, architecture, delivery.
 
 ## Why it exists
 
