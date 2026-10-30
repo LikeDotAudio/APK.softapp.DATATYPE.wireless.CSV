@@ -8,12 +8,12 @@ mod csv_importer;
 
 fn main() {
     let test_files = vec![
-        concat!(env!("CARGO_MANIFEST_DIR"), "/DataMigration/4_CSV/test_data/report_converted.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/DataMigration/4_CSV/test_data/report.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/DataMigration/4_CSV/test_data/SB PDF.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/DataMigration/4_CSV/test_data/venue_converted.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/DataMigration/4_CSV/test_data/venue_data.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/DataMigration/4_CSV/test_data/venue.csv"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/report_converted.csv"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/report.csv"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/SB PDF.csv"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue_converted.csv"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue_data.csv"),
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue.csv"),
     ];
 
     println!("=== SMART CSV PATTERN RECOGNITION TEST RUNNER ===");

@@ -107,10 +107,10 @@ cargo build --bin test_csv_pattern_importer
 cargo run   --bin test_csv_pattern_importer      # publishes to the local broker, retained
 ```
 
-Checked 2026-10-30: it builds, and the runner **fails all six files** — it looks for its fixtures
-at `<MANAGEMENT.DataMigration>/DataMigration/4_CSV/test_data/`, which no longer exists; they are
-here in `test_data/`. Pointed at `test_data/` directly, the importer reads `report.csv` 168
-records, `venue*.csv` 253 each, `SB PDF.csv` 20 (Soundbase), `report_converted.csv` 0.
+The runner reads its six fixtures from `../../DATATYPE/DATATYPE.wireless.CSV/test_data/` (until
+2026-10-30 it looked under `<MANAGEMENT.DataMigration>/DataMigration/4_CSV/`, which no longer
+exists, and failed all six). The importer reads `report.csv` 168 records, `venue*.csv` 253 each,
+`SB PDF.csv` 20 (Soundbase), `report_converted.csv` 0.
 
 ### `IMPORT:file:CSV/` (Python)
 
