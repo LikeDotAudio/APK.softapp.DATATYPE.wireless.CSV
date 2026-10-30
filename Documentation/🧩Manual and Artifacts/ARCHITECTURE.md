@@ -34,7 +34,7 @@ CSV text ──▶ classify_csv_str()  (csv_importer.rs, no side effect)
 | `test_data/` | the fixtures (`report.csv`, `venue*.csv`, `SB PDF.csv`, …) |
 | `SRC/` | the worker crate `apk-worker-wireless-csv`: `lib.rs` (`handle_job`, `run_job_agent`), `self_test.rs`, `bin/apk-worker-wireless-csv.rs` (`apk_plugin_runner::main!`), `config.ini` (`max_job_bytes`) |
 | `Docker/` | the worker image and compose, `include:`d by `PODS/POD.workers/Docker/docker-compose.yml` |
-| `IMPORT:file:CSV/` | the Python edge from the desktop app: `Entry.py` / `FileReaders/from_csv_unknown.py` call `oaRustCore.csv_parser.convert_csv_unknown`; `Tests/` (pytest, `conftest.py` sets the path) |
+| `IMPORT:file:CSV/` | the Python edge from the desktop app: `Entry.py` / `FileReaders/from_csv_unknown.py` call `oaRustCore.csv_parser.convert_csv_unknown`, which runs `parse_and_classify_csv` (this parser) and raises on a file with no record; `Tests/` (pytest, `conftest.py` sets the path) |
 
 ## Testing
 

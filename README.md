@@ -129,8 +129,11 @@ same coordination report, converted correctly, is `report.csv`.
 calls `oaRustCore.csv_parser.convert_csv_unknown` and raises `RuntimeError` if it is not
 importable — there is no Python CSV parser, on purpose. `Methods/csv_parser.py` imports it
 unguarded. Logging comes from `importer_logging` (in `PODS/POD.THICK/NODE.BareMetal/SRC/Core/`),
-which falls back to a no-op. The Rust parser is `NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs`,
-built into the `oaRustCore` wheel; it exports that one function.
+which falls back to a no-op. `convert_csv_unknown` (`NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs`,
+built into the `oaRustCore` wheel) does not parse: it runs `parse_and_classify_csv` from
+`SRC/csv_importer.rs` — the same parser as every other caller — and returns `(headers, rows)`
+with the columns `ZONE, GROUP, DEVICE, NAME, FREQ_MHZ, BAND`. A file with no record is an
+`OSError`, never an empty list.
 
 ```bash
 cd "IMPORT:file:CSV" && python3 -m pytest -q Tests        # Tests/conftest.py finds importer_logging

@@ -6,7 +6,7 @@ The rules the CSV importer and its worker keep, each with the code that keeps it
 
 | Principle | Kept by | Where it breaks |
 |---|---|---|
-| **One parser for every caller.** The DataMigration import, the worker and the runner all run `classify_csv_str`; the worker pulls `csv_importer.rs` in by `#[path]`, never a copy. | `classify_csv_str` (`SRC/csv_importer.rs` line 71); `SRC/src/lib.rs` | The Python edge (`IMPORT:file:CSV/`) calls a *different* Rust parser, `oaRustCore.csv_parser.convert_csv_unknown`, with its own header aliases |
+| **One parser for every caller.** The DataMigration import, the worker, the runner and the Python edge (`oaRustCore.csv_parser.convert_csv_unknown`) all run `classify_csv_str`; the worker pulls `csv_importer.rs` in by `#[path]`, never a copy. | `classify_csv_str` (`SRC/csv_importer.rs` line 71); `SRC/src/lib.rs` | — (until 2026-10-30 the Python edge's `convert_csv_unknown` was a second Rust parser with its own header aliases) |
 | **Parsing has no side effect; publishing is a separate step.** | `csv_importer.rs` has no MQTT client; the daemon (`data_migration.rs`) and the worker publish | — (until 2026-10-30 `parse_and_classify_csv_str` published retained to the loopback broker) |
 | **Do not invent a value.** `band` is empty where the file has no band column, and an empty zone/group/device/name cell stays empty. | `StandardRfRecord` doc (line 29); the zone/group and custom arms of `classify_csv_str` | — (placeholders `N/A`, `Generic RF`, `CH_<n>` removed 2026-10-30) |
 | **A tool is a job on the bus, not an endpoint.** | `run_job_agent` (`SRC/src/lib.rs` line 119); `Docker/docker-compose.yml` has no `ports:` | — |
