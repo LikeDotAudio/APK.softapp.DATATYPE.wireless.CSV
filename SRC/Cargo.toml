@@ -1,0 +1,50 @@
+# apk-worker-wireless-csv — the CSV importer as a worker on the bus (PLAN-3423.01).
+#
+# Owns: the container entry point that answers `outgoing/job` with
+# `incoming/result` by running `../csv_importer.rs` — the same parser the
+# DataMigration crate compiles, pulled in by `#[path]`, not copied.
+#
+# BUILT ON apk-plugin-runner, the crate every THICK plugin links. The runner
+# publishes the config, the last will, the self-test door and the retained
+# `incoming/api` description; this crate adds only the job loop. A worker
+# that rebuilt those five things would be the twenty-first copy the runner
+# exists to prevent.
+#
+# ITS OWN WORKSPACE, not a member of DISCOVERY.Engine's. The owner rejected
+# workers as THICK plugins (PLAN-3423.01): a worker builds its own image, so
+# a broken worker never fails the plugin build and the reverse.
+#
+# CONTRACTS BY THE SAME LEXICAL PATH THE RUNNER USES
+# (`…/NODE.BareMetal/SRC/contracts/rust`). Cargo keys a path package by its
+# path, so a second spelling of the same directory is a second
+# apkaudio-contracts and the build fails with a package collision.
+[package]
+name = "apk-worker-wireless-csv"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+
+[lib]
+name = "apk_worker_wireless_csv"
+path = "src/lib.rs"
+
+[dependencies]
+apk-plugin-runner = { path = "../../../../../POD.THICK/DISCOVERY.Engine/SRC/RUNNER" }
+apkaudio-contracts = { path = "../../../../../POD.THICK/NODE.BareMetal/SRC/contracts/rust" }
+base64 = "0.22"
+csv = "1.3"
+rumqttc = "0.24"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "apk-worker-wireless-csv"
+path = "src/bin/apk-worker-wireless-csv.rs"
+
+# The runner's own health probe, compiled from the runner's source file rather
+# than copied: it reads the timestamp `serve` writes into /tmp. A dependency's
+# binaries are not built for a dependent, so this crate names the file.
+[[bin]]
+name = "apk-plugin-health"
+path = "../../../../../POD.THICK/DISCOVERY.Engine/SRC/RUNNER/src/bin/apk-plugin-health.rs"

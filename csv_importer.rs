@@ -54,8 +54,24 @@ pub fn parse_and_classify_csv(file_path: impl AsRef<Path>) -> Result<CsvRecogniz
     parse_and_classify_csv_str(&content, &path.to_string_lossy())
 }
 
-/// Smartly classifies CSV patterns from a raw string payload and extracts standard RF records.
+/// Classify and parse, then publish the result retained on
+/// `DataMigration/CSV/ImportedData` — what the orchestrator's file-path import
+/// and the test runner call.
 pub fn parse_and_classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognizedResult, String> {
+    let result = classify_csv_str(content, source_name)?;
+    if let Ok(json_payload) = serde_json::to_string_pretty(&result) {
+        publish_to_mqtt(&csv_importer_mqtt_topic(), &json_payload);
+    }
+    Ok(result)
+}
+
+/// Classify the layout and extract standard RF records. NO SIDE EFFECT.
+///
+/// Split out of `parse_and_classify_csv_str` for the worker (`SRC/`,
+/// PLAN-3423.01), which answers a job on `incoming/result` and must not also
+/// overwrite the retained `ImportedData` document every time a browser asks
+/// for a parse. One parser either way: both entry points run this function.
+pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognizedResult, String> {
     let mut rdr = ReaderBuilder::new()
         .has_headers(true)
         .flexible(true)
@@ -144,7 +160,7 @@ pub fn parse_and_classify_csv_str(content: &str, source_name: &str) -> Result<Cs
         }
     }
 
-    let result = CsvRecognizedResult {
+    Ok(CsvRecognizedResult {
         status: "success".to_string(),
         source_file: source_name.to_string(),
         pattern,
@@ -152,13 +168,7 @@ pub fn parse_and_classify_csv_str(content: &str, source_name: &str) -> Result<Cs
         mqtt_topic: csv_importer_mqtt_topic(),
         total_records: records.len(),
         records,
-    };
-
-    if let Ok(json_payload) = serde_json::to_string_pretty(&result) {
-        publish_to_mqtt(&csv_importer_mqtt_topic(), &json_payload);
-    }
-
-    Ok(result)
+    })
 }
 
 pub fn publish_to_mqtt(topic: &str, payload: &str) {
