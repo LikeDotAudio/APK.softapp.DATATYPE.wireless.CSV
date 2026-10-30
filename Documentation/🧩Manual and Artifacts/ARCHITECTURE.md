@@ -30,7 +30,7 @@ CSV text ──▶ classify_csv_str()  (csv_importer.rs, no side effect)
 | Path | What |
 |---|---|
 | `csv_importer.rs` | the parser (it publishes nothing); module `csv_importer` of `MANAGEMENT.DataMigration` (`mod.rs`, `#[path]`) |
-| `test_csv_pattern_importer.rs` | `[[bin]]` runner over six fixtures; exits 1 on any failure; publishes nothing |
+| `test_csv_pattern_importer.rs` | `[[bin]]` runner over six fixtures, each with the record count it must import (`report_converted.csv` 0, a negative fixture); exits 1 on a parse error or a wrong count; publishes nothing |
 | `test_data/` | the fixtures (`report.csv`, `venue*.csv`, `SB PDF.csv`, …) |
 | `SRC/` | the worker crate `apk-worker-wireless-csv`: `lib.rs` (`handle_job`, `run_job_agent`), `self_test.rs`, `bin/apk-worker-wireless-csv.rs` (`apk_plugin_runner::main!`), `config.ini` (`max_job_bytes`) |
 | `Docker/` | the worker image and compose, `include:`d by `PODS/POD.workers/Docker/docker-compose.yml` |

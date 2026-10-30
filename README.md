@@ -113,8 +113,15 @@ cargo run   --bin test_csv_pattern_importer      # parses the fixtures; publishe
 
 The runner reads its six fixtures from `../../DATATYPE/DATATYPE.wireless.CSV/test_data/` (until
 2026-10-30 it looked under `<MANAGEMENT.DataMigration>/DataMigration/4_CSV/`, which no longer
-exists, and failed all six). The importer reads `report.csv` 168 records, `venue*.csv` 253 each,
-`SB PDF.csv` 20 (Soundbase), `report_converted.csv` 0 (`status: "empty"`, 179 rows skipped).
+exists, and failed all six). Each fixture carries the record count it must import, and a
+different count fails the run: `report.csv` 168, `venue*.csv` 253 each, `SB PDF.csv` 20
+(Soundbase), `report_converted.csv` 0 (`status: "empty"`, 179 rows skipped).
+
+`report_converted.csv` is a negative fixture, not a broken one. It is the output of a retired
+PDF-report converter (not the current `convert_csv_unknown`, which never writes "No Match") that
+found no frequency on any line and wrote `No Match` into every FREQ cell; its source text is not
+kept. The importer is right to drop every row: `No Match` is not a 100–3000 MHz frequency. The
+same coordination report, converted correctly, is `report.csv`.
 
 ### `IMPORT:file:CSV/` (Python)
 

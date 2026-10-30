@@ -9,13 +9,21 @@ use std::path::Path;
 mod csv_importer;
 
 fn main() {
-    let test_files = vec![
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/report_converted.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/report.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/SB PDF.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue_converted.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue_data.csv"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue.csv"),
+    // Each fixture with the record count it must import. A count that drifts is a
+    // failure, not a line to read past.
+    //
+    // `report_converted.csv` is a negative fixture: it is the output of a retired
+    // PDF-report converter that found no frequency on any line and wrote "No Match"
+    // into every FREQ cell (its source PDF text is not kept). The importer must
+    // classify it as Standard Zone/Group and import nothing, all 179 rows skipped.
+    // `report.csv` is the same coordination report converted correctly: 168 records.
+    let test_files: [(&str, usize); 6] = [
+        (concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/report_converted.csv"), 0),
+        (concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/report.csv"), 168),
+        (concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/SB PDF.csv"), 20),
+        (concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue_converted.csv"), 253),
+        (concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue_data.csv"), 253),
+        (concat!(env!("CARGO_MANIFEST_DIR"), "/../../DATATYPE/DATATYPE.wireless.CSV/test_data/venue.csv"), 253),
     ];
 
     println!("=== SMART CSV PATTERN RECOGNITION TEST RUNNER ===");
@@ -24,7 +32,7 @@ fn main() {
     // exit 0, so `check.sh` could have run it and never seen a broken importer.
     let mut failures = 0;
 
-    for file_path in test_files {
+    for (file_path, expected) in test_files {
         let path = Path::new(file_path);
         let filename = path.file_name().unwrap_or_default().to_string_lossy();
         println!("\nTesting File: '{}'", filename);
@@ -40,6 +48,10 @@ fn main() {
                         sample.zone, sample.group, sample.device, sample.channel_name,
                         sample.frequency_mhz, sample.band);
                 }
+                if res.total_records != expected {
+                    eprintln!("  └─ FAIL: expected {} record(s), got {}", expected, res.total_records);
+                    failures += 1;
+                }
             }
             Err(e) => {
                 eprintln!("  └─ ERROR: {}", e);
@@ -49,7 +61,7 @@ fn main() {
     }
     println!("\n=================================================");
     if failures > 0 {
-        eprintln!("{} file(s) failed to parse.", failures);
+        eprintln!("{} file(s) failed to parse or imported the wrong count.", failures);
         std::process::exit(1);
     }
 }
