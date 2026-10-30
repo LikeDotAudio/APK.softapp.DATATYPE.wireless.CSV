@@ -21,7 +21,7 @@ function, `classify_csv_str` in `csv_importer.rs`.
 ## 🧩 Architectural Role
 * **Family**: DATATYPE — an importer for somebody else's file format
 * **Category**: Wireless / RF coordination reports — source `4_CSV` of the four DataMigration importers (IAS, Soundbase, Wireless Workbench, CSV)
-* **Pipeline Stage**: Data Migration — the record lands on `APK.audio/System/DataMigration/CSV/ImportedData`, the topic the `Gui_Frames/3_Data_Migration/4_CSV` frame shows
+* **Pipeline Stage**: Data Migration — the `Gui_Frames/3_Data_Migration/4_CSV` frame posts the file's text as a job to `wireless_csv` and shows the answer from `…/wireless_csv/incoming/result`; the orchestrator's `FilePath` daemon still lands records on `APK.audio/System/DataMigration/CSV/ImportedData` for other publishers
 
 ---
 
@@ -138,7 +138,7 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
 ---
 
 ## 🚀 Usage & Integration
-* **Web Portal Entry**: none of its own. The records are drawn by the Data Migration frame
+* **Web Portal Entry**: none of its own. The records are drawn (from the worker's `incoming/result`) by the Data Migration frame
   `PODS/POD.THIN/WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/CSV_Importer.json`.
   `display.json` declares the folder to the launcher with `entry: csv_importer.rs`, `tech: rust`
   (as DATATYPE.wireless.IAS does), and `requires: {plugins: [wireless_csv], services: [broker]}`,

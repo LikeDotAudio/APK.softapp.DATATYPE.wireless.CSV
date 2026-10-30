@@ -4,7 +4,7 @@
 
 ## Using it
 
-- **From the Data Migration tab** — choose a CSV in the *CSV* frame (`WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/`). The frame publishes it on `APK.audio/System/DataMigration/CSV/FilePath`; the records come back retained on `…/CSV/ImportedData`.
+- **From the Data Migration tab** — choose a CSV in the *CSV* frame (`WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/`). The browser reads the file and the frame posts its text as a job (below, `file_dialog.publish_as: "job"`); its table is bound to `…/wireless_csv/incoming/result`. The orchestrator's `DataMigration/CSV/FilePath` → retained `…/CSV/ImportedData` path still exists for any other publisher, but the frame no longer uses it.
 - **As a job** — publish `{"job_id", "filename", "text" | "content_b64"}` to `APK.audio/System/Protocols/wireless_csv/outgoing/job`; the answer `{"job_id", "tool", "ok", "result", "error", "elapsed_ms"}` arrives on `…/wireless_csv/incoming/result`. Neither is retained.
 
 ## How it works
