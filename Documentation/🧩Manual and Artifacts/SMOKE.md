@@ -4,13 +4,13 @@ Is `DATATYPE.wireless.CSV` deployed? Written by `.apk.scripts/smoke.py` from the
 
 ← [Wiki home](../README.md)
 
-**❌ FAIL** — 1/2 checks, since 2026-10-30 18:01 EDT
+**✅ PASS** — 2/2 checks, since 2026-10-30 18:07 EDT
 
 | Check | Target | Result | Detail |
 |---|---|---|---|
-| pushed | [APK.softapp.DATATYPE.wireless.CSV](https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV.git) | ❌ | 2 commit(s) not pushed |
+| pushed | [APK.softapp.DATATYPE.wireless.CSV](https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV.git) | ✅ | HEAD is on origin |
 | container | `Worker-WIRELESS_CSV` | ✅ | running, healthy |
 
 Re-run: `python3 .apk.scripts/smoke.py PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV`
 
-<!-- smoke:sig b8ba6fbb8a4a since 2026-10-30 18:01 EDT -->
+<!-- smoke:sig a2c4d789e358 since 2026-10-30 18:07 EDT -->

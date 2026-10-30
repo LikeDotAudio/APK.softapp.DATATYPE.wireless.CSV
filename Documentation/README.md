@@ -14,5 +14,5 @@ The documentation for `DATATYPE.wireless.CSV`, in the same lanes as the APK.audi
 <!-- /wiki:lanes -->
 
 <!-- wiki:smoke -->
-**Smoke test** — ❌ FAIL 1/2 since 2026-10-30 18:01 EDT — [results](%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)
+**Smoke test** — ✅ PASS 2/2 since 2026-10-30 18:07 EDT — [results](%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)
 <!-- /wiki:smoke -->
