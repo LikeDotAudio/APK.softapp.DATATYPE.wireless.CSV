@@ -115,20 +115,21 @@ records, `venue*.csv` 253 each, `SB PDF.csv` 20 (Soundbase), `report_converted.c
 ### `IMPORT:file:CSV/` (Python)
 
 `Entry.py` and `FileReaders/from_csv_unknown.py` expose `convert_unknown_csv_report()`, which
-calls `oaRustCore.csv_parser.convert_csv_unknown` and raises if it is not importable — there is
-no Python CSV parser, on purpose. `Methods/csv_parser.py` imports it unguarded. Logging comes from
-`importer_logging` (in `PODS/POD.THICK/NODE.BareMetal/SRC/Core/`), which falls back to a no-op.
-`Methods/oaCSVParser_rs/` holds only a maturin `pyproject.toml` and Python shims, no Rust source;
-the parser it names is `NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs`.
+calls `oaRustCore.csv_parser.convert_csv_unknown` and raises `RuntimeError` if it is not
+importable — there is no Python CSV parser, on purpose. `Methods/csv_parser.py` imports it
+unguarded. Logging comes from `importer_logging` (in `PODS/POD.THICK/NODE.BareMetal/SRC/Core/`),
+which falls back to a no-op. The Rust parser is `NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs`,
+built into the `oaRustCore` wheel; it exports that one function.
 
 ```bash
-cd "IMPORT:file:CSV"
-PYTHONPATH=<repo>/PODS/POD.THICK/NODE.BareMetal/SRC/Core python3 -m pytest -q Tests --ignore=Tests/test_rust_csv_parser.py
+cd "IMPORT:file:CSV" && python3 -m pytest -q Tests        # Tests/conftest.py finds importer_logging
 ```
 
-Checked 2026-10-30: 3 passed. `Tests/test_rust_csv_parser.py` does not collect here — it imports
-`oaFileImportCSV…`, a package name only the original desktop layout provides — and
-`Methods/oaCSVParser_rs/python/tests` skips without `oaRustCore`.
+The folder name is not a Python identifier, so `Tests/conftest.py` puts the package root on
+`sys.path` and the tests import `FileReaders.from_csv_unknown` directly. Checked 2026-10-30:
+without `oaRustCore`, 2 passed and 3 skipped (each skip names `maturin build`); with the wheel
+built from `NODE.BareMetal/SRC/Core` (`maturin build --release`) and installed, 5 passed — the
+venue fixture, a missing file, a malformed row, and a refusal when the parser is absent.
 
 ---
 
@@ -161,7 +162,8 @@ Checked 2026-10-30: 3 passed. `Tests/test_rust_csv_parser.py` does not collect h
   zone/group/device/name cells with placeholder labels.
 - **One parser, no silent fallback.** The Python edge refuses to run without the Rust parser
   rather than quietly producing different records (`IMPORT:file:CSV/Entry.py`,
-  `Methods/csv_parser.py` headers).
+  `FileReaders/from_csv_unknown.py`, `Methods/csv_parser.py`; tested by
+  `Tests/test_negative_paths.py`).
 - **A failing fixture fails the run.** The runner counts failures and exits 1
   (`test_csv_pattern_importer.rs`); it used to print and exit 0.
 - **Keep going on a bad row.** Unreadable records and cells that are not a frequency in range

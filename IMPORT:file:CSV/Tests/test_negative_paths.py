@@ -1,46 +1,53 @@
 # Part of the APK.audio project — http://APK.audio — made by Anthony Kuzub
 # MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
-# Tests/test_negative_paths.py
-# Author: Gemini CLI
-# Version: 20260404.2250.1
+# Tests/test_negative_paths.py — the sad paths: a missing parser, a missing file,
+# a malformed row. Each must raise; none may return an empty, complete-looking result.
 #
-# Description: Negative and Sad Path testing for file ingestion.
+# These were two `pass` bodies around commented-out calls to a function that does
+# not exist, so they passed without testing anything.
 
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-# Assume we have a CSV parser to test
-# Replace with actual import if available
-# from oaFileHandlers.oaFileImportCSV.Core.rust_csv_parser import parse_csv
+from FileReaders import from_csv_unknown
+
+try:
+    from oaRustCore import csv_parser as _rust  # noqa: F401
+    HAVE_RUST = True
+except ImportError:
+    HAVE_RUST = False
+
 
 class TestNegativePaths(unittest.TestCase):
     def setUp(self):
         self.test_directory = tempfile.TemporaryDirectory()
-        self.project_root = Path(self.test_directory.name)
+        self.root = Path(self.test_directory.name)
 
     def tearDown(self):
         self.test_directory.cleanup()
 
-    # --- 2. Negative and "Sad Path" Testing ---
-    def test_csv_ingestion_malformed_row(self):
-        """Pragmatic Programmer: Alarms should sound (Malformed CSV)"""
-        malformed_path = self.project_root / "malformed.csv"
-        with open(malformed_path, "w") as f:
-            f.write("Header1,Header2\nValue1\nValue2,Value3,Value4") # Mismatched columns
+    def test_no_rust_parser_refuses_rather_than_falls_back(self):
+        """Without the Rust parser there is no answer, not a slower or emptier one."""
+        with mock.patch.object(from_csv_unknown, "rust_convert_csv_unknown", None):
+            with self.assertRaises(RuntimeError) as caught:
+                from_csv_unknown.convert_unknown_csv_report(self.root / "any.csv")
+        self.assertIn("Rust CSV parser", str(caught.exception))
 
-        # Test logic should handle this gracefully (e.g., raise exception or return empty)
-        # Assuming a hypothetical function:
-        # with self.assertRaises(ValueError):
-        #     parse_csv(malformed_path)
-        pass
-
+    @unittest.skipUnless(HAVE_RUST, "oaRustCore not built")
     def test_csv_ingestion_missing_file(self):
-        """Pragmatic Programmer: Sad Path (Missing File)"""
-        missing_path = self.project_root / "does_not_exist.csv"
-        # with self.assertRaises(FileNotFoundError):
-        #     parse_csv(missing_path)
-        pass
+        with self.assertRaises(OSError):
+            from_csv_unknown.convert_unknown_csv_report(self.root / "does_not_exist.csv")
+
+    @unittest.skipUnless(HAVE_RUST, "oaRustCore not built")
+    def test_csv_ingestion_malformed_row(self):
+        """A row with the wrong number of fields is an error, not a silently short record."""
+        path = self.root / "malformed.csv"
+        path.write_text("ZONE,FREQ\nA\nB,500,extra\n")
+        with self.assertRaises(OSError):
+            from_csv_unknown.convert_unknown_csv_report(path)
+
 
 if __name__ == "__main__":
     unittest.main()

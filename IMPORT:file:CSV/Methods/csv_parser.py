@@ -16,7 +16,9 @@
 # Author: Anthony Peter Kuzub
 # Version: 20260331.2150.2
 #
-# Description: Pure Rust CSV parser with Polars support (No Python fallback).
+# Description: Pure Rust CSV parser (No Python fallback). `oaRustCore.csv_parser` exports
+# one function, `convert_csv_unknown`; the `load_large_csv` wrapper that sat here named a
+# Polars loader the module never had, and was removed.
 
 LOCAL_DEBUG = False
 from oaRustCore import csv_parser as apkaudio_csvparser_rs
@@ -24,7 +26,7 @@ from oaRustCore import csv_parser as apkaudio_csvparser_rs
 
 class CSVParser:
     """
-    High-performance CSV parser using Rust and Polars.
+    High-performance CSV parser using Rust.
     MANDATORY Rust implementation.
     """
     @staticmethod
@@ -32,9 +34,3 @@ class CSVParser:
         if LOCAL_DEBUG:
             print("📄🛠️🔗 [CSV] Using PURE RUST parser (nom/regex).")
         return apkaudio_csvparser_rs.convert_csv_unknown(file_path)
-
-    @staticmethod
-    def load_large_csv(file_path: str):
-        if LOCAL_DEBUG:
-            print("📊🛠️🔗 [CSV] Using PURE RUST loader (Polars).")
-        return apkaudio_csvparser_rs.load_large_csv(file_path)

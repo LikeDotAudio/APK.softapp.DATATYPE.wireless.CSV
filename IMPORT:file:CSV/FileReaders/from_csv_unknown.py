@@ -2,39 +2,37 @@
 # MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 # FileReaders/from_csv_unknown.py
 #
-# Best-effort CSV parser for unknown header formats.
+# Best-effort CSV conversion for unknown header formats, by the Rust parser.
 #
-# Author: Anthony Peter Kuzub
-# Version: 20260331.2240.1
+# There is no Python parser and no fallback: `oaRustCore.csv_parser` (built from
+# NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs) is the one
+# implementation. Without it this raises — the same rule as `Entry.py` and
+# `Methods/csv_parser.py`. It used to log "Falling back to slow Python parsing"
+# and then call a name that was never bound, so the warning described a fallback
+# that did not exist and the call died with a NameError.
 
 import inspect
 
-from loguru import logger
-
 from importer_logging import matrix_log
-
-# --- Constants ---
-VERSION = "20260331.2240.1"
 
 try:
     from oaRustCore.csv_parser import convert_csv_unknown as rust_convert_csv_unknown
-    HAS_RUST_CSV = True
 except ImportError:
-    logger.warning("🚀⚠️ [CSV] Rust CSV Parser missing. Falling back to slow Python parsing.")
-    HAS_RUST_CSV = False
+    rust_convert_csv_unknown = None
 
-# Inline comment: Logic for convert_unknown_csv_report
+
 def convert_unknown_csv_report(file_path):
-    """
-    Performs a 'best-effort' conversion of a CSV file with unknown headers
-    to the standardized marker report format using the mandatory Rust parser.
-    """
-    matrix_log("ui", "importer", inspect.currentframe().f_code.co_name if "inspect" in globals() else "unknown", f"▶️ Starting best-effort CSV conversion for: {file_path}", "DEBUG")
+    """(standard_headers, rows) for a CSV with unknown headers, by the mandatory Rust parser.
 
+    Raises RuntimeError when the Rust parser is not installed, and the parser's own
+    OSError for a missing or malformed file."""
+    here = inspect.currentframe().f_code.co_name
+    if rust_convert_csv_unknown is None:
+        matrix_log("ui", "importer", here, "🚀❌ [CSV] Rust CSV parser missing — refusing; there is no Python parser.", "ERROR")
+        raise RuntimeError("Rust CSV parser (oaRustCore.csv_parser) is required but not installed.")
+    matrix_log("ui", "importer", here, f"▶️ Rust best-effort CSV conversion for: {file_path}", "DEBUG")
     try:
-        standard_headers, processed_rows = rust_convert_csv_unknown(file_path)
-        matrix_log("ui", "importer", inspect.currentframe().f_code.co_name if "inspect" in globals() else "unknown", "🚀 Using HIGH-PERFORMANCE RUST CSV parser.", "DEBUG")
-        return standard_headers, processed_rows
+        return rust_convert_csv_unknown(str(file_path))
     except Exception as e:
-        matrix_log("ui", "importer", inspect.currentframe().f_code.co_name if "inspect" in globals() else "unknown", f"🚀❌ [FATAL] Rust CSV conversion failed: {e}", "ERROR")
-        raise e
+        matrix_log("ui", "importer", here, f"🚀❌ [FATAL] Rust CSV conversion failed: {e}", "ERROR")
+        raise
