@@ -2,6 +2,6 @@
   "name": "Datatype Wireless Csv",
   "category": "DATATYPE",
   "icon": "\ud83d\udcd1",
-  "description": "Data Format Importers & Parsers component for APK.audio ecosystem.",
+  "description": "Wireless-coordination CSV importer: recognises Soundbase, zone/group and custom layouts and publishes channel records on APK.audio/System/DataMigration/CSV/ImportedData.",
   "entry": "main.py"
 }
