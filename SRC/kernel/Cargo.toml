@@ -17,7 +17,7 @@
 # and oaRustCore link); the workers take it with `worker`.
 [package]
 name = "apkaudio-wireless-kernel"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [features]
@@ -25,7 +25,7 @@ default = []
 worker = ["dep:apk-plugin-runner", "dep:base64", "dep:serde_json", "dep:serde"]
 
 [dependencies]
-apk-plugin-runner = { git = "https://github.com/LikeDotAudio/APK.plugin.SDK", tag = "sdk-v0.7", optional = true }
+apk-plugin-runner = { git = "https://github.com/LikeDotAudio/APK.plugin.SDK", tag = "sdk-v0.9", optional = true }
 base64 = { version = "0.22", optional = true }
 serde = { version = "1.0", optional = true }
 serde_json = { version = "1", optional = true }

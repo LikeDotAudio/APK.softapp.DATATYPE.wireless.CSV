@@ -101,7 +101,7 @@ shape, without `schema` or `result`.)
   self-test door and the retained self-description at `wireless_csv/incoming/api`.
 - `SRC/src/self_test.rs` runs a five-row CSV through `handle_job` and expects 4 records.
 - The crate names `apk-plugin-runner` and `apkaudio-contracts` from APK.plugin.SDK by tag
-  (`sdk-v0.7`), like the THICK plugins; Cargo.lock pins the git sources, and the image
+  (`sdk-v0.9`), like the THICK plugins; Cargo.lock pins the git sources, and the image
   (`Docker/Dockerfile`) builds from this repository's `SRC/` alone. The runtime is `debian:bookworm-slim`, user
   `worker` (uid 10001). Compose runs it `read_only`, `cap_drop: [ALL]`, no published port, on
   the `workers` network plus `apk-audio_default` to reach the broker as `broker:1883`.
