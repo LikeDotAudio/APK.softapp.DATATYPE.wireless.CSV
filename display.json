@@ -2,7 +2,7 @@
   "name": "Datatype Wireless Csv",
   "category": "DATATYPE",
   "icon": "📑",
-  "description": "Wireless-coordination CSV importer: recognises Soundbase, zone/group and custom layouts and turns them into channel records — published on APK.audio/System/DataMigration/CSV/ImportedData by the node, and answered as a job by the worker Worker-WIRELESS_CSV.",
+  "description": "Wireless-coordination CSV importer: recognises Soundbase, zone/group and custom layouts and turns them into channel records — answered as a job by the worker Worker-WIRELESS_CSV on APK.audio/System/Protocols/wireless_csv/incoming/result.",
   "entry": "SRC/csv_importer.rs",
   "tech": "rust",
   "requires": {

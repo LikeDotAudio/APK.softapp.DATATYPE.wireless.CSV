@@ -4,7 +4,7 @@
 
 ## Using it
 
-- **From the Data Migration tab** — choose a CSV in the *CSV* frame (`WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/`). The browser reads the file and the frame posts its text as a job (below, `file_dialog.publish_as: "job"`); its table is bound to `…/wireless_csv/incoming/result`. The orchestrator's `DataMigration/CSV/FilePath` → retained `…/CSV/ImportedData` path still exists for any other publisher, but the frame no longer uses it.
+- **From the Data Migration tab** — choose a CSV in the *CSV* frame (`WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/`). The browser reads the file and the frame posts its text as a job (below, `file_dialog.publish_as: "job"`); its table is bound to `…/wireless_csv/incoming/result`. The orchestrator's `DataMigration/CSV/FilePath` → retained `…/CSV/ImportedData` inbox is retired (LOOSE-datamigration-frames-to-workers).
 - **As a job** — publish `{"job_id", "filename", "text" | "content_b64"}` to `APK.audio/System/Protocols/wireless_csv/outgoing/job`; the answer `{"job_id", "tool", "ok", "result", "error", "elapsed_ms"}` arrives on `…/wireless_csv/incoming/result`. Neither is retained.
 
 ## How it works
@@ -14,8 +14,6 @@ CSV text ──▶ classify_csv_str()  (csv_importer.rs, no side effect)
                header row, upper-cased → SoundbaseReport | StandardZoneGroup | UnknownCustom
                each row → StandardRfRecord { zone, group, device, channel_name, frequency_mhz, band }
                status "success" | "empty" (no records); skipped_rows = data rows with no record
-          ├─▶ NODE.BareMetal's data-migration daemon (oaRustCore::data_migration)
-          │      → publishes retained to …/DataMigration/CSV/ImportedData on its own session
           └─▶ SRC handle_job() → JSON answer on …/wireless_csv/incoming/result   (Worker-WIRELESS_CSV)
 ```
 

@@ -21,7 +21,7 @@ function, `classify_csv_str` in `csv_importer.rs`.
 ## 🧩 Architectural Role
 * **Family**: DATATYPE — an importer for somebody else's file format
 * **Category**: Wireless / RF coordination reports — source `4_CSV` of the four DataMigration importers (IAS, Soundbase, Wireless Workbench, CSV)
-* **Pipeline Stage**: Data Migration — the `Gui_Frames/3_Data_Migration/4_CSV` frame posts the file's text as a job to `wireless_csv` and shows the answer from `…/wireless_csv/incoming/result`; the orchestrator's `FilePath` daemon still lands records on `APK.audio/System/DataMigration/CSV/ImportedData` for other publishers
+* **Pipeline Stage**: Data Migration — the `Gui_Frames/3_Data_Migration/4_CSV` frame posts the file's text as a job to `wireless_csv` and shows the answer from `…/wireless_csv/incoming/result`; the orchestrator's `FilePath` inbox is retired (LOOSE-datamigration-frames-to-workers)
 
 ---
 
@@ -57,12 +57,11 @@ leaves all four empty — `pattern_name` already says what kind of file it was.
 `soundbase_importer.rs` keeps). `skipped_rows` counts the data rows that yielded no record —
 unreadable, too short, or no frequency in 100–3000 MHz; a blank line is not counted.
 
-**The importer opens no broker.** `PODS/POD.THICK/NODE.BareMetal/SRC/Core/ORCHESTRATOR:hunter:VISA/src/services/data_migration.rs`
-subscribes to `APK.audio/System/DataMigration/+/FilePath`, runs `classify_csv_str` on the CSV
-payload and publishes the whole `CsvRecognizedResult` (status, source file, pattern, topic,
-counts, records) as pretty JSON, QoS 1, **retained**, on its own session to
-`APK.audio/System/DataMigration/CSV/ImportedData` (built by
-`apkaudio_contracts::topics::data_migration("CSV", "ImportedData")`). Until 2026-10-30 the
+**The importer opens no broker.** It returns the `CsvRecognizedResult` (status, source file,
+pattern, topic, counts, records); the `wireless_csv` worker answers a job with it. The
+orchestrator's DataMigration inbox, which published it retained on
+`APK.audio/System/DataMigration/CSV/ImportedData`, is retired (LOOSE-datamigration-frames-to-workers).
+Until 2026-10-30 the
 importer also carried a publisher of its own (`parse_and_classify_csv_str`, `publish_to_mqtt`)
 to the loopback broker, which only the test runner still reached — so a test run overwrote the
 live retained document.
@@ -167,9 +166,9 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
   (`SRC/src/lib.rs`).
 - **A job is always answered.** Bad JSON, a missing body, bad base64 or an oversized CSV comes
   back as `ok: false` with an `error`, never as silence (`handle_job`, its tests).
-- **The bus is the API.** The importer's output reaches other apps as a retained message on a
-  topic built from the contract crate (`csv_importer_mqtt_topic()`), published by the node's
-  data-migration daemon, never by the parser itself.
+- **The bus is the API.** The importer's output reaches other apps as the worker's answer on
+  `APK.audio/System/Protocols/wireless_csv/incoming/result` (a topic built by the contract's
+  `baremetal_io::module_result`), never published by the parser itself.
 - **Topics come from the contract, never typed out** (`apkaudio_contracts::topics::data_migration`,
   comment above `csv_importer_mqtt_topic()`).
 - **Do not invent a value.** Only the Soundbase layout has a band column; for the others `band` is

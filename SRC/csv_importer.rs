@@ -2,9 +2,9 @@
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 //! Smart CSV Pattern Classifier & Importer written in Rust.
 //!
-//! It parses; it does not publish. The orchestrator (`data_migration.rs`)
-//! publishes the result retained on `DataMigration/CSV/ImportedData`, and the
-//! worker (`SRC/`) answers a job with it. Nothing in this file opens a broker.
+//! It parses; it does not publish. The worker (`SRC/`) answers a job with the
+//! result (the orchestrator's DataMigration inbox that also published it is
+//! retired: LOOSE-datamigration-frames-to-workers). Nothing in this file opens a broker.
 
 use csv::ReaderBuilder;
 use serde::{Deserialize, Serialize};
@@ -63,7 +63,7 @@ pub fn parse_and_classify_csv(file_path: impl AsRef<Path>) -> Result<CsvRecogniz
 
 /// Classify the layout and extract standard RF records. NO SIDE EFFECT.
 ///
-/// The one parser: the orchestrator's import, the worker (`SRC/`,
+/// The one parser: oaRustCore's CSV parser, the worker (`SRC/`,
 /// PLAN-3423.01) and the test runner all run this function. Publishing is the
 /// caller's business (LOOSE-datatype-wireless-csv-held-by-session: it used to
 /// publish retained to the loopback broker itself, so a test run overwrote
