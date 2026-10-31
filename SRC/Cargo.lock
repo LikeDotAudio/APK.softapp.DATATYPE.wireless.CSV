@@ -20,22 +20,40 @@ dependencies = [
 
 [[package]]
 name = "apk-worker-wireless-csv"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "apk-plugin-runner",
  "apkaudio-contracts",
+ "apkaudio-wireless-csv",
+ "apkaudio-wireless-kernel",
  "base64",
- "csv",
- "rumqttc",
- "serde",
  "serde_json",
 ]
 
 [[package]]
 name = "apkaudio-contracts"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "regress",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "apkaudio-wireless-csv"
+version = "0.1.0"
+dependencies = [
+ "apkaudio-wireless-kernel",
+ "csv",
+ "serde",
+]
+
+[[package]]
+name = "apkaudio-wireless-kernel"
+version = "0.1.0"
+dependencies = [
+ "apk-plugin-runner",
+ "base64",
  "serde",
  "serde_json",
 ]

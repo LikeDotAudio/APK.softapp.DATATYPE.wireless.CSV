@@ -13,7 +13,7 @@
 
 import inspect
 
-from importer_logging import matrix_log
+from apk_wireless_import import log
 
 try:
     from oaRustCore.csv_parser import convert_csv_unknown as rust_convert_csv_unknown
@@ -28,11 +28,11 @@ def convert_unknown_csv_report(file_path):
     OSError for a missing or malformed file."""
     here = inspect.currentframe().f_code.co_name
     if rust_convert_csv_unknown is None:
-        matrix_log("ui", "importer", here, "🚀❌ [CSV] Rust CSV parser missing — refusing; there is no Python parser.", "ERROR")
+        log(here, "🚀❌ [CSV] Rust CSV parser missing — refusing; there is no Python parser.", "ERROR")
         raise RuntimeError("Rust CSV parser (oaRustCore.csv_parser) is required but not installed.")
-    matrix_log("ui", "importer", here, f"▶️ Rust best-effort CSV conversion for: {file_path}", "DEBUG")
+    log(here, f"▶️ Rust best-effort CSV conversion for: {file_path}", "DEBUG")
     try:
         return rust_convert_csv_unknown(str(file_path))
     except Exception as e:
-        matrix_log("ui", "importer", here, f"🚀❌ [FATAL] Rust CSV conversion failed: {e}", "ERROR")
+        log(here, f"🚀❌ [FATAL] Rust CSV conversion failed: {e}", "ERROR")
         raise

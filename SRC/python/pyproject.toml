@@ -1,0 +1,17 @@
+# apk-wireless-import — the wireless importers' shared Python edge (2026-10-30 audit).
+# Install:  pip install "apk-wireless-import @ git+https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV@<rev>#subdirectory=SRC/python"
+# Monorepo: pip install -e PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/SRC/python
+# Test:     python3 -m pytest -q SRC/python/tests
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apk-wireless-import"
+version = "0.1.0"
+description = "MARKER_HEADERS, the stateless importer lifecycle and the logging call shared by the APK.audio wireless importers' Python edges."
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[tool.setuptools]
+packages = ["apk_wireless_import"]

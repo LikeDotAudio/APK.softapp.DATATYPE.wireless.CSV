@@ -14,18 +14,17 @@
 //!
 //! [`handle_job`] is the whole tool and has no bus in it, so the tests below
 //! run it on the fixtures in `../test_data/` with no broker anywhere near.
-//! [`run_job_agent`] is the thin loop that feeds it from MQTT.
+//! [`run_job_agent`] hands it to the runner's job loop
+//! (`apk_plugin_runner::jobs::JobWorker`); the envelope — `job_id`, `text` |
+//! `content_b64`, the size limit, the versioned answer — is the wireless
+//! kernel's (`kernel/src/job.rs`), shared with the IAS, SOUNDbase and Wireless
+//! Workbench workers.
 
-#[path = "../csv_importer.rs"]
-pub mod csv_importer;
+pub use apkaudio_wireless_csv as csv_importer;
 pub mod self_test;
 
-use std::time::{Duration, Instant};
-
-use apkaudio_contracts::baremetal_io;
-use base64::Engine as _;
-use rumqttc::{Client, Event, MqttOptions, Packet, QoS};
-use serde_json::{Value, json};
+use apkaudio_wireless_kernel::job;
+use serde_json::Value;
 
 /// The token the bus knows this worker by. The same word as `[wireless_csv]`.
 pub const MODULE: &str = "wireless_csv";
@@ -41,130 +40,34 @@ const DEFAULT_MAX_JOB_BYTES: usize = 8 * 1024 * 1024;
 
 /// `max_job_bytes` from `config.ini`, or the default.
 pub fn max_job_bytes(config_ini: &str) -> usize {
-    apk_plugin_runner::ini_to_json(config_ini)
-        .get(MODULE)
-        .and_then(|s| s.get("max_job_bytes"))
-        .and_then(Value::as_str)
-        .and_then(|v| v.trim().parse().ok())
-        .unwrap_or(DEFAULT_MAX_JOB_BYTES)
+    job::max_job_bytes(config_ini, MODULE, DEFAULT_MAX_JOB_BYTES)
 }
 
-/// Answer one job. Always returns a result document, never panics on input:
-/// a malformed job gets `ok: false` and an `error`, with its `job_id` when it
-/// had one, so the caller waiting on that id is not left waiting forever.
+/// Answer one job. Always returns a result document, never panics on input.
 pub fn handle_job(payload: &[u8], max_bytes: usize) -> Value {
-    let started = Instant::now();
-    let job: Value = match serde_json::from_slice(payload) {
-        Ok(v @ Value::Object(_)) => v,
-        Ok(_) => return failure(Value::Null, "a job is a JSON object", started),
-        Err(e) => return failure(Value::Null, &format!("the job is not JSON: {e}"), started),
-    };
-    let job_id = match job.get("job_id") {
-        Some(Value::String(s)) if !s.is_empty() => Value::String(s.clone()),
-        _ => return failure(Value::Null, "the job has no job_id", started),
-    };
-    let filename = job.get("filename").and_then(Value::as_str).unwrap_or("upload.csv");
-
-    let text = match (job.get("text"), job.get("content_b64")) {
-        (Some(Value::String(t)), _) => t.clone(),
-        (_, Some(Value::String(b))) => {
-            let bytes = match base64::engine::general_purpose::STANDARD.decode(b.trim()) {
-                Ok(bytes) => bytes,
-                Err(e) => return failure(job_id, &format!("content_b64 does not decode: {e}"), started),
-            };
-            // Exports from Windows tools are often Latin-1; lossy rather than
-            // refused, because a frequency column is ASCII either way.
-            String::from_utf8_lossy(&bytes).into_owned()
-        }
-        _ => return failure(job_id, "the job carries neither text nor content_b64", started),
-    };
-    if text.len() > max_bytes {
-        return failure(
-            job_id,
-            &format!("the CSV is {} bytes; this worker takes at most {max_bytes}", text.len()),
-            started,
-        );
-    }
-
-    match csv_importer::classify_csv_str(&text, filename) {
-        Ok(parsed) => json!({
-            "job_id": job_id,
-            "tool": TOOL,
-            "ok": true,
-            "result": parsed,
-            "error": null,
-            "elapsed_ms": started.elapsed().as_millis() as u64,
-        }),
-        Err(e) => failure(job_id, &e, started),
+    match job::read_file_job(payload, TOOL, "upload.csv", "the CSV", max_bytes) {
+        Ok(file) => file.answer(TOOL, csv_importer::classify_csv_str(&file.text(), &file.filename)),
+        Err(failure) => failure,
     }
 }
 
-fn failure(job_id: Value, error: &str, started: Instant) -> Value {
-    json!({
-        "job_id": job_id,
-        "tool": TOOL,
-        "ok": false,
-        "result": null,
-        "error": error,
-        "elapsed_ms": started.elapsed().as_millis() as u64,
-    })
-}
-
-/// The job loop. Blocking; the runner starts it on its own thread and exits
-/// the process if it ever returns, so Docker restarts the container.
-///
-/// Its own session rather than the runner's: the runner's session carries the
-/// config, the will and the self-test door, and a slow parse must not hold
-/// any of those up.
+/// The job loop: the runner's. Blocking; the runner starts it on its own
+/// thread and exits the process if it ever returns, so Docker restarts it.
 pub fn run_job_agent(host: &str, port: u16) {
-    let (job_topic, _) = baremetal_io::module_job(MODULE).expect("wireless_csv is a legal module token");
-    let (result_topic, retain) =
-        baremetal_io::module_result(MODULE).expect("wireless_csv is a legal module token");
-    let max_bytes = max_job_bytes(CONFIG_INI);
-
-    let client_id = format!("apk-worker-{MODULE}-{}", std::process::id());
-    let mut options = MqttOptions::new(client_id, host, port);
-    options.set_keep_alive(Duration::from_secs(30));
-    // A job is a file; the default 10 kB packet ceiling would refuse most of them.
-    options.set_max_packet_size(max_bytes + 64 * 1024, max_bytes + 64 * 1024);
-    if let Some((username, password)) = apkaudio_contracts::broker_auth::credentials() {
-        options.set_credentials(username, password);
-    }
-
-    let (client, mut connection) = Client::new(options, 32);
-    println!("🧰 [{MODULE}] worker listening on {job_topic}, answering on {result_topic}");
-    for event in connection.iter() {
-        // Every event, ping responses included, is progress: an idle worker
-        // still ticks every keep-alive, so stall detection fires only when the
-        // session is truly wedged.
-        apk_plugin_runner::tick();
-        match event {
-            Ok(Event::Incoming(Packet::ConnAck(_))) => {
-                // Subscribed on every ConnAck: a clean session forgets it.
-                let _ = client.try_subscribe(job_topic.clone(), QoS::AtLeastOnce);
-            }
-            Ok(Event::Incoming(Packet::Publish(p))) if p.topic == job_topic => {
-                let answer = handle_job(&p.payload, max_bytes);
-                println!(
-                    "🧰 [{MODULE}] job {} → ok={} records={}",
-                    answer["job_id"],
-                    answer["ok"],
-                    answer["result"]["total_records"]
-                );
-                let _ = client.try_publish(result_topic.clone(), QoS::AtLeastOnce, retain, answer.to_string());
-            }
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("⚠️ [{MODULE}] broker session: {e}; retrying");
-                std::thread::sleep(Duration::from_secs(2));
-            }
-        }
-    }
+    let max = max_job_bytes(CONFIG_INI);
+    apk_plugin_runner::jobs::JobWorker::new(MODULE, TOOL, move |payload: &[u8]| handle_job(payload, max))
+        // A job is a file, and base64 grows it by a third.
+        .max_packet(max / 3 * 4 + 64 * 1024)
+        .describe(|a| format!("ok={} records={}", a["ok"], a["result"]["total_records"]))
+        .run(host, port);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use apkaudio_contracts::baremetal_io;
+    use base64::Engine as _;
+    use serde_json::json;
 
     const VENUE: &str = include_str!("../../test_data/venue.csv");
     const SOUNDBASE: &str = include_str!("../../test_data/SB PDF.csv");
@@ -182,6 +85,25 @@ mod tests {
         // The count the README records for venue.csv, read straight from the file.
         assert_eq!(out["result"]["total_records"], 253);
         assert_eq!(out["result"]["source_file"], "venue.csv");
+        assert_eq!(out["schema"], job::SCHEMA);
+    }
+
+    /// The wire shape a browser reads. A parser field renamed is a failure
+    /// here first; change it on purpose, together with `kernel::job::SCHEMA`.
+    #[test]
+    fn the_result_shape_is_pinned() {
+        let out = handle_job(&job(json!({"job_id": "s", "filename": "venue.csv", "text": VENUE})), 1 << 20);
+        let keys = |v: &Value| {
+            let mut k: Vec<String> = v.as_object().unwrap().keys().cloned().collect();
+            k.sort();
+            k
+        };
+        assert_eq!(
+            keys(&out["result"]),
+            ["pattern", "pattern_name", "records", "skipped_rows", "source_file", "status", "total_records"]
+        );
+        assert_eq!(keys(&out["result"]["records"][0]), ["band", "channel_name", "device", "frequency_mhz", "group", "zone"]);
+        assert_eq!(job::SCHEMA, 1);
     }
 
     #[test]

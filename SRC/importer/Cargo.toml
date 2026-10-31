@@ -1,0 +1,21 @@
+# apkaudio-wireless-csv — the pattern-recognising wireless CSV parser, as a crate.
+#
+# Owns: `classify_csv_str` (layout recognition + StandardRfRecord extraction)
+# and the fixture tests over `../../test_data/`. Pure: no bus, no runner.
+#
+# ONE OWNER, TWO CONSUMERS (2026-10-30 audit): the worker beside it (`SRC/`)
+# links it by path; MANAGEMENT.DataMigration (and through it oaRustCore) links
+# it by git rev. Nobody compiles this file by `#[path]` any more.
+[package]
+name = "apkaudio-wireless-csv"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "apkaudio_wireless_csv"
+path = "src/lib.rs"
+
+[dependencies]
+apkaudio-wireless-kernel = { path = "../kernel" }
+csv = "1.3"
+serde = { version = "1.0", features = ["derive"] }

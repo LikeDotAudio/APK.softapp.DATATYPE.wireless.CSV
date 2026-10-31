@@ -11,39 +11,50 @@
 # here would silently become the one that runs on any machine where maturin has
 # not been run, producing different records from the same file.
 #
-# `importer_logging` rather than `oaLogging` directly: that package is not in
-# this repository, and importing it at module scope made this file — and
-# therefore the whole `oaFileImportCSV` package and its test suite —
-# uncollectable. See the header on `importer_logging.py`.
+# The logging call and the importer lifecycle come from `apk_wireless_import`
+# (SRC/python/ in this repository, shared with the IAS, SoundBase-PDF and
+# Wireless Workbench edges), not from NODE.BareMetal's `importer_logging`:
+# this edge no longer needs another repository on PYTHONPATH to import.
 
-from importer_logging import matrix_log
+from apk_wireless_import import Lifecycle, log
+
 try:
     from oaRustCore.csv_parser import convert_csv_unknown as rust_convert_csv_unknown
 except ImportError:
     rust_convert_csv_unknown = None
 
-# Inline comment: Logic for convert_unknown_csv_report
+# "live" when the Rust parser is reachable, "unavailable" when it is not.
+STATUS = "live" if rust_convert_csv_unknown else "unavailable"
+
+
 def convert_unknown_csv_report(file_path):
     if rust_convert_csv_unknown:
-        matrix_log("ui", "importer", "convert_unknown_csv_report", "🚀 Using HIGH-PERFORMANCE RUST CSV parser.", "DEBUG")
+        log("convert_unknown_csv_report", "🚀 Using HIGH-PERFORMANCE RUST CSV parser.")
         return rust_convert_csv_unknown(str(file_path))
-    else:
-        raise RuntimeError("Rust CSV parser is required but not installed.")
+    raise RuntimeError("Rust CSV parser is required but not installed.")
 
-# Inline comment: Logic for start
-def start():
-    pass
 
-# Inline comment: Logic for stop
-def stop():
-    pass
+def _self_test():
+    """The parser answers at all: a two-row zone/group file through it."""
+    import os
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "self_test.csv")
+        with open(path, "w") as f:
+            f.write("ZONE,GROUP,DEVICE,NAME,FREQ\nA,G1,D,Lead,566.600\n")
+        headers, rows = convert_unknown_csv_report(path)
+    return bool(headers) and len(rows) == 1
+
+
+_life = Lifecycle(STATUS, self_test=_self_test)
+start, stop, status, run_tests = _life.start, _life.stop, _life.status, _life.run_tests
+
 
 def report_status():
-    """Human-readable state of the importer back end."""
-    return "Running with Rust Engine"
+    """Human-readable state of the importer back end — the STATUS word, no more.
 
-# Inline comment: Logic for run_tests
-def run_tests():
-    return True
+    It used to answer "Running with Rust Engine" whether or not the engine was built."""
+    return STATUS
 
-__all__ = ["convert_unknown_csv_report", "start", "stop", "report_status", "run_tests"]
+
+__all__ = ["convert_unknown_csv_report", "STATUS", "start", "stop", "status", "report_status", "run_tests"]

@@ -2,7 +2,7 @@
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 //! Smart CSV Pattern Classifier & Importer written in Rust.
 //!
-//! It parses; it does not publish. The worker (`SRC/`) answers a job with the
+//! It parses; it does not publish. The worker (`SRC/src/lib.rs`) answers a job with the
 //! result (the orchestrator's DataMigration inbox that also published it is
 //! retired: LOOSE-datamigration-frames-to-workers). Nothing in this file opens a broker.
 
@@ -118,7 +118,7 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
                     let freq_str = rec[4].trim();
 
                     if let Ok(freq) = freq_str.parse::<f64>() {
-                        if freq > 100.0 && freq < 3000.0 {
+                        if apkaudio_wireless_kernel::is_usable_mhz(freq) {
                             // An empty cell stays empty: "N/A", "General", "Generic RF" and
                             // "CH_<n>" read downstream as things the file said.
                             records.push(StandardRfRecord {
@@ -144,7 +144,7 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
                 // Heuristic scan for frequency floats in cells
                 for cell in rec.iter() {
                     if let Ok(freq) = cell.trim().parse::<f64>() {
-                        if freq > 100.0 && freq < 3000.0 {
+                        if apkaudio_wireless_kernel::is_usable_mhz(freq) {
                             // Only the frequency was found; the rest is unknown, and left
                             // empty rather than labelled ("Unknown Zone", "CH_<n>").
                             // `pattern_name` already says this was an arbitrary CSV.
@@ -178,11 +178,9 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
     })
 }
 
-/// "success" only when the file yielded records; a parse that found none is
-/// "empty", never a success the panel would draw as an imported, blank table
-/// (the rule `soundbase_importer.rs` already keeps).
+/// "success" only when the file yielded records — the kernel's one rule.
 fn status_for(records: usize) -> String {
-    if records > 0 { "success" } else { "empty" }.to_string()
+    apkaudio_wireless_kernel::import_status(records)
 }
 
 #[cfg(test)]

@@ -1,0 +1,31 @@
+# apkaudio-wireless-kernel — what the four wireless importers and their
+# workers agree on, written once (2026-10-30 audit).
+#
+# Owns: the usable-frequency rule (100–3000 MHz, exclusive), the import status
+# word ("success" / "empty"), and — behind the `worker` feature — the file-job
+# envelope every wireless worker reads and answers: `job_id`, `filename`,
+# `text` | `content_b64`, the size limit, and the result document with its
+# `schema` version.
+#
+# WHY IT LIVES IN DATATYPE.wireless.CSV: the CSV worker is the reference shape
+# the other three were copied from, and a home in an importer repo keeps the
+# dependency graph one-way: IAS / SOUNDbase / SHUREwirelessWorkbench → this
+# crate (by git rev); MANAGEMENT.DataMigration → the four importers (by git
+# rev). Nothing points back.
+#
+# The parsers take it without `worker` (no bus, no runner — what DataMigration
+# and oaRustCore link); the workers take it with `worker`.
+[package]
+name = "apkaudio-wireless-kernel"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+worker = ["dep:apk-plugin-runner", "dep:base64", "dep:serde_json", "dep:serde"]
+
+[dependencies]
+apk-plugin-runner = { git = "https://github.com/LikeDotAudio/APK.plugin.SDK", tag = "sdk-v0.5", optional = true }
+base64 = { version = "0.22", optional = true }
+serde = { version = "1.0", optional = true }
+serde_json = { version = "1", optional = true }

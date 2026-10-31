@@ -11,10 +11,15 @@
 
 A coordination report (Soundbase, a zone/group sheet, or any CSV with frequencies in it) has to
 become channel records the bench can show and plan with. This repository is the one place that
-conversion lives. It runs two ways: compiled into the DataMigration crate, where a file path on
-the bench is imported and the records are published retained; and as a worker, where any
-client sends the CSV itself as a job and receives the records as the answer. Both run the same
-function, `classify_csv_str` in `csv_importer.rs`.
+conversion lives. It runs two ways: as the crate `apkaudio-wireless-csv` that
+MANAGEMENT.DataMigration (and through it oaRustCore) depends on by git rev; and as a worker,
+where any client sends the CSV itself as a job and receives the records as the answer. Both run
+the same function, `classify_csv_str` in `SRC/importer/src/lib.rs`.
+
+It is also the home of what the four wireless importers share: the **wireless kernel**
+(`SRC/kernel/`, crate `apkaudio-wireless-kernel` — the 100–3000 MHz rule, the status word, the
+versioned file-job envelope) and the Python package **`apk_wireless_import`** (`SRC/python/` —
+`MARKER_HEADERS`, the stateless importer lifecycle, the logging call).
 
 ---
 
@@ -29,18 +34,20 @@ function, `classify_csv_str` in `csv_importer.rs`.
 
 | Path | What it is |
 |---|---|
-| `SRC/csv_importer.rs` | The importer. Compiled as module `csv_importer` of the `apkaudio-data-migration` crate. |
-| `SRC/test_csv_pattern_importer.rs` | A `[[bin]]` runner of that crate: parses six fixtures, prints a summary, exits 1 if any fails. |
+| `SRC/importer/` | The parser crate `apkaudio-wireless-csv` (`src/lib.rs`), and `tests/fixtures.rs`: six fixtures, each with the record count it must import. |
+| `SRC/kernel/` | `apkaudio-wireless-kernel`: `is_usable_mhz` / `usable_mhz_text` (100–3000 MHz, exclusive), `import_status`, and with feature `worker` the `job` module (`read_file_job`, `FileJob::answer`, `failure`, `max_job_bytes`, `SCHEMA`). Taken by IAS, SOUNDbase and SHUREwirelessWorkbench by git rev. |
+| `SRC/python/` | The package `apk-wireless-import` (`apk_wireless_import`): `MARKER_HEADERS`, `Lifecycle`, `log`; its tests in `SRC/python/tests/`. Taken by the IAS, PDF and Shure Python edges. |
+| `SRC/check.sh` | Every check here in one command: `cargo test --workspace --locked` and both pytest suites. |
 | `test_data/` | Fixtures: `report.csv`, `report_converted.csv`, `venue.csv`, `venue_data.csv`, `venue_converted.csv`, `SB PDF.csv`, and a Lectrosonics programming guide PDF. |
 | `IMPORT:file:CSV/` | The Python edge (`oaFileImportCSV`) from the desktop app this was lifted out of — see below. |
-| `SRC/` | The worker crate `apk-worker-wireless-csv` (PLAN-3423.01): `#[path]`s `csv_importer.rs` (beside its `Cargo.toml`) in and answers jobs on the bus. |
+| `SRC/` | The worker crate `apk-worker-wireless-csv` (PLAN-3423.01): links `importer/` and `kernel/` by path (workspace members) and answers jobs on the bus. |
 | `Docker/` | The worker's `Dockerfile` (repo-root context) and `docker-compose.yml` (project `workers`, container `Worker-WIRELESS_CSV`), `include:`d by `PODS/POD.workers/Docker/docker-compose.yml`. |
 
-### `SRC/csv_importer.rs`
+### `SRC/importer/` (`apkaudio-wireless-csv`)
 
 `classify_csv_str(text, source_name)` reads the header row, upper-cases it and picks a pattern.
 It has no side effect; `parse_and_classify_csv(path)` reads a file and calls it. Nothing in
-`csv_importer.rs` publishes — the caller does (below):
+the parser publishes — the caller does (below):
 
 | Pattern | Recognised by | Columns read |
 |---|---|---|
@@ -53,8 +60,9 @@ Each row becomes a `StandardRfRecord { zone, group, device, channel_name, freque
 zone/group/device/name cell stays empty, and the custom layout, which finds only a frequency,
 leaves all four empty — `pattern_name` already says what kind of file it was.
 
-`status` is `"success"` only when the file yielded records, `"empty"` otherwise (the rule
-`soundbase_importer.rs` keeps). `skipped_rows` counts the data rows that yielded no record —
+`status` is `"success"` only when the file yielded records, `"empty"` otherwise
+(`apkaudio_wireless_kernel::import_status`, the one rule all four importers use). The band guard
+is `apkaudio_wireless_kernel::is_usable_mhz`. `skipped_rows` counts the data rows that yielded no record —
 unreadable, too short, or no frequency in 100–3000 MHz; a blank line is not counted.
 
 **The importer opens no broker.** It returns the `CsvRecognizedResult` (status, source file,
@@ -72,28 +80,37 @@ live retained document.
 client ── APK.audio/System/Protocols/wireless_csv/outgoing/job ──▶ Worker-WIRELESS_CSV
           {"job_id": "…", "filename": "venue.csv", "text": "<csv>"}   ("content_b64" for raw bytes)
 client ◀─ APK.audio/System/Protocols/wireless_csv/incoming/result ── Worker-WIRELESS_CSV
-          {"job_id": "…", "tool": "DATATYPE.wireless.CSV", "ok": true, "result": {…}, "error": null, "elapsed_ms": 0}
+          {"schema": 1, "job_id": "…", "tool": "DATATYPE.wireless.CSV", "ok": true, "result": {…}, "error": null, "elapsed_ms": 0}
 ```
 
-- `SRC/src/lib.rs` `handle_job` is the tool: it decodes the job, refuses one over `max_job_bytes`
-  (`SRC/config.ini`, 8 MiB), runs `csv_importer::classify_csv_str`, and always returns a result
-  document. A malformed job gets `ok: false` and an `error`, with its `job_id` when it had one.
-- `SRC/src/lib.rs` `run_job_agent` is the loop: its own MQTT session, subscribed to
-  `outgoing/job`, publishing each answer to `incoming/result`. Neither leaf is retained
-  (`contracts/rust/src/baremetal_io.rs`, `module_job` / `module_result`). It calls
-  `apk_plugin_runner::tick()` on every broker event so the health file stays fresh while idle.
+`schema` is `apkaudio_wireless_kernel::job::SCHEMA`; `the_result_shape_is_pinned` holds the
+`result` keys and a record's keys, so a renamed parser field fails a test before it is a wire
+change. (The `busy` answer the runner sends when four jobs already wait is the runner's shared
+shape, without `schema` or `result`.)
+
+- `SRC/src/lib.rs` `handle_job` is the tool: the kernel's `read_file_job` decodes the job and
+  refuses one over `max_job_bytes` (`SRC/config.ini`, 8 MiB), `classify_csv_str` parses, and
+  `FileJob::answer` wraps it. A malformed job gets `ok: false` and an `error`, with its `job_id`
+  when it had one.
+- `SRC/src/lib.rs` `run_job_agent` is the runner's job loop, `apk_plugin_runner::jobs::JobWorker`:
+  its own session, subscribed to `outgoing/job` on every ConnAck, the job on a lane thread off
+  the session thread, each answer to `incoming/result`. Neither leaf is retained
+  (`baremetal_io::module_job` / `module_result`).
 - `SRC/src/bin/apk-worker-wireless-csv.rs` hands both to `apk_plugin_runner::main!`. The runner
   (`PODS/POD.THICK/DISCOVERY.Engine/SRC/RUNNER`) publishes the config, the last will, the
   self-test door and the retained self-description at `wireless_csv/incoming/api`.
 - `SRC/src/self_test.rs` runs a five-row CSV through `handle_job` and expects 4 records.
-- The image (`Docker/Dockerfile`) builds from the repo root, because the crate links
-  `apkaudio-contracts` and `apk-plugin-runner`. The runtime is `debian:bookworm-slim`, user
+- The crate names `apk-plugin-runner` and `apkaudio-contracts` from APK.plugin.SDK by tag
+  (`sdk-v0.5`), like the THICK plugins. In the monorepo `SRC/.cargo/config.toml` (git-excluded)
+  patches both to the checkout; the image (`Docker/Dockerfile`) passes the same two patches as
+  `--config`, which is why it still builds from the repo root. A standalone clone builds once a
+  published SDK tag carries `apk_plugin_runner::jobs`. The runtime is `debian:bookworm-slim`, user
   `worker` (uid 10001). Compose runs it `read_only`, `cap_drop: [ALL]`, no published port, on
   the `workers` network plus `apk-audio_default` to reach the broker as `broker:1883`.
   The healthcheck is the runner's `apk-plugin-health`, compiled from the runner's source file.
 
 ```bash
-cd SRC && cargo test                                                          # handle_job on the fixtures
+bash SRC/check.sh                                                             # every check, cargo + pytest
 docker compose -f PODS/POD.workers/Docker/docker-compose.yml up -d --build    # from the repo root
 mosquitto_pub -h 127.0.0.1 -t APK.audio/System/Protocols/wireless_csv/outgoing/job \
   -m '{"job_id":"t1","filename":"x.csv","text":"ZONE,GROUP,DEVICE,NAME,FREQ\nA,G,D,N,566.6\n"}'
@@ -101,20 +118,16 @@ mosquitto_pub -h 127.0.0.1 -t APK.audio/System/Protocols/wireless_csv/outgoing/j
 
 ### Build and test
 
-The crate is `Softapps/MANAGEMENT_AND_UTILITIES/MANAGEMENT.DataMigration` — `mod.rs` pulls this
-file in by `#[path]`, and `Cargo.toml` declares the runner as a `[[bin]]`:
-
 ```bash
-cd PODS/POD.THIN/Softapps/MANAGEMENT_AND_UTILITIES/MANAGEMENT.DataMigration
-cargo build --bin test_csv_pattern_importer
-cargo run   --bin test_csv_pattern_importer      # parses the fixtures; publishes nothing
+cd SRC && cargo test --workspace      # worker, parser crate (fixtures), kernel
+bash SRC/check.sh                     # the same, --locked, plus both pytest suites
 ```
 
-The runner reads its six fixtures from `../../DATATYPE/DATATYPE.wireless.CSV/test_data/` (until
-2026-10-30 it looked under `<MANAGEMENT.DataMigration>/DataMigration/4_CSV/`, which no longer
-exists, and failed all six). Each fixture carries the record count it must import, and a
-different count fails the run: `report.csv` 168, `venue*.csv` 253 each, `SB PDF.csv` 20
-(Soundbase), `report_converted.csv` 0 (`status: "empty"`, 179 rows skipped).
+`SRC/importer/tests/fixtures.rs` reads its six fixtures from this repository's `test_data/`
+(through its own `CARGO_MANIFEST_DIR`). It was the `test_csv_pattern_importer` `[[bin]]` that
+MANAGEMENT.DataMigration built from this repository's file until the 2026-10-30 audit. Each
+fixture carries the record count it must import: `report.csv` 168, `venue*.csv` 253 each,
+`SB PDF.csv` 20 (Soundbase), `report_converted.csv` 0 (`status: "empty"`, 179 rows skipped).
 
 `report_converted.csv` is a negative fixture, not a broken one. It is the output of a retired
 PDF-report converter (not the current `convert_csv_unknown`, which never writes "No Match") that
@@ -127,15 +140,17 @@ same coordination report, converted correctly, is `report.csv`.
 `Entry.py` and `FileReaders/from_csv_unknown.py` expose `convert_unknown_csv_report()`, which
 calls `oaRustCore.csv_parser.convert_csv_unknown` and raises `RuntimeError` if it is not
 importable — there is no Python CSV parser, on purpose. `Methods/csv_parser.py` imports it
-unguarded. Logging comes from `importer_logging` (in `PODS/POD.THICK/NODE.BareMetal/SRC/Core/`),
-which falls back to a no-op. `convert_csv_unknown` (`NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs`,
+unguarded. Logging and the lifecycle come from `apk_wireless_import` (`SRC/python/`), whose
+`log` falls back to a no-op without `oaLogging`; `Entry.py` declares `STATUS` ("live" /
+"unavailable") and its `run_tests()` runs a two-row file through the parser — never True for
+having run nothing. `convert_csv_unknown` (`NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs`,
 built into the `oaRustCore` wheel) does not parse: it runs `parse_and_classify_csv` from
-`SRC/csv_importer.rs` — the same parser as every other caller — and returns `(headers, rows)`
+`apkaudio-wireless-csv` — the same parser as every other caller — and returns `(headers, rows)`
 with the columns `ZONE, GROUP, DEVICE, NAME, FREQ_MHZ, BAND`. A file with no record is an
 `OSError`, never an empty list.
 
 ```bash
-cd "IMPORT:file:CSV" && python3 -m pytest -q Tests        # Tests/conftest.py finds importer_logging
+cd "IMPORT:file:CSV" && python3 -m pytest -q Tests        # conftest puts ../SRC/python on sys.path unless installed
 ```
 
 The folder name is not a Python identifier, so `Tests/conftest.py` puts the package root on
@@ -149,7 +164,7 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
 ## 🚀 Usage & Integration
 * **Web Portal Entry**: none of its own. The records are drawn (from the worker's `incoming/result`) by the Data Migration frame
   `PODS/POD.THIN/WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/CSV_Importer.json`.
-  `display.json` declares the folder to the launcher with `entry: SRC/csv_importer.rs`, `tech: rust`
+  `display.json` declares the folder to the launcher with `entry: SRC/importer/src/lib.rs`, `tech: rust`
   (as DATATYPE.wireless.IAS does), and `requires: {plugins: [wireless_csv], services: [broker]}`,
   so the Launch Pad marks it *needs wireless_csv (not running)* when Worker-WIRELESS_CSV is down.
 * **Remote Repository**: `https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV.git`
@@ -162,8 +177,11 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
   `outgoing/job` on `incoming/result` and describes itself at `incoming/api`
   (`SRC/src/lib.rs` `run_job_agent`, `Docker/docker-compose.yml` has no `ports:`).
 - **One parser for every caller.** The worker and the DataMigration import both run
-  `classify_csv_str`; the worker pulls `csv_importer.rs` in by `#[path]` rather than copying it
-  (`SRC/src/lib.rs`).
+  `classify_csv_str`; the worker links the parser crate by path and DataMigration by git rev —
+  one owner, no `#[path]` include anywhere (`SRC/importer/`).
+- **What the importers share is written once.** The band rule, the status word and the job
+  envelope are the kernel's (`SRC/kernel/`); the marker header row and the lifecycle are
+  `apk_wireless_import`'s (`SRC/python/`).
 - **A job is always answered.** Bad JSON, a missing body, bad base64 or an oversized CSV comes
   back as `ok: false` with an `error`, never as silence (`handle_job`, its tests).
 - **The bus is the API.** The importer's output reaches other apps as the worker's answer on
@@ -176,8 +194,8 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
   rather than quietly producing different records (`IMPORT:file:CSV/Entry.py`,
   `FileReaders/from_csv_unknown.py`, `Methods/csv_parser.py`; tested by
   `Tests/test_negative_paths.py`).
-- **A failing fixture fails the run.** The runner counts failures and exits 1
-  (`test_csv_pattern_importer.rs`); it used to print and exit 0.
+- **A failing fixture fails the run.** `SRC/importer/tests/fixtures.rs` asserts each count
+  (the old runner printed and exited 0 until it was fixed, then moved here as a test).
 - **Keep going on a bad row.** Unreadable records and cells that are not a frequency in range
   are skipped, not fatal (`rdr.records().flatten()`, the 100–3000 MHz guard).
 
