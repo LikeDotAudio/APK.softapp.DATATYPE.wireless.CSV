@@ -4,7 +4,7 @@ Audited against the APK.audio multi-repo architecture standard: coupling, bounda
 ← [Audits](INDEX.md) · Improvements: [🛣Roadmap/IMPROVEMENTS.md](../%F0%9F%9B%A3Roadmap/IMPROVEMENTS.md)
 
 ## Bounded context
-Wireless-coordination CSV import: recognise one of three layouts (Soundbase, Zone/Group, custom) and emit `StandardRfRecord`s; runs as the bus worker `Worker-WIRELESS_CSV` and as a module compiled into MANAGEMENT.DataMigration. Rust (~600 lines) plus a 250-line Python edge `IMPORT:file:CSV/`, 7 fixtures. Sampled: all Rust, `Docker/*`, `SRC/Cargo.toml`, `config.ini`, Python entry/tests, README.
+Wireless-coordination CSV import: recognise one of three layouts (Soundbase, Zone/Group, custom) and emit `StandardRfRecord`s; runs as the bus worker `Worker-WIRELESS_CSV` and as a module compiled into MANAGEMENT.DataMigration. Rust (~600 lines) plus a 250-line Python edge `IMPORT.file.CSV/`, 7 fixtures. Sampled: all Rust, `Docker/*`, `SRC/Cargo.toml`, `config.ini`, Python entry/tests, README.
 
 ## Context map
 | Talks to | How (topic / endpoint / file / import) | Relationship |

@@ -45,12 +45,12 @@ SRC (worker) ──path──▶ SRC/importer, SRC/kernel ; ──SDK tag sdk-v0
 | `test_data/` | the fixtures (`report.csv`, `venue*.csv`, `SB PDF.csv`, …) |
 | `SRC/` | the worker crate `apk-worker-wireless-csv`: `lib.rs` (`handle_job`, `run_job_agent` on `JobWorker`), `self_test.rs`, `bin/apk-worker-wireless-csv.rs` (`apk_plugin_runner::main!`), `config.ini` (`max_job_bytes`), `check.sh` |
 | `Docker/` | the worker image and compose, `include:`d by `PODS/POD.workers/Docker/docker-compose.yml` |
-| `IMPORT:file:CSV/` | the Python edge from the desktop app: `Entry.py` / `FileReaders/from_csv_unknown.py` call `oaRustCore.csv_parser.convert_csv_unknown`, which runs `parse_and_classify_csv` (this parser) and raises on a file with no record; `Tests/` (pytest; `conftest.py` puts the package root and `../SRC/python` on the path) |
+| `IMPORT.file.CSV/` | the Python edge from the desktop app: `Entry.py` / `FileReaders/from_csv_unknown.py` call `oaRustCore.csv_parser.convert_csv_unknown`, which runs `parse_and_classify_csv` (this parser) and raises on a file with no record; `Tests/` (pytest; `conftest.py` puts the package root and `../SRC/python` on the path) |
 
 ## Testing
 
 ```bash
 bash PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/SRC/check.sh
 #   cargo test --workspace --locked in SRC/ (worker 8, parser 2 + fixtures 2, kernel 8)
-#   pytest IMPORT:file:CSV/Tests SRC/python/tests (12 passed, 3 skipped without the oaRustCore wheel)
+#   pytest IMPORT.file.CSV/Tests SRC/python/tests (12 passed, 3 skipped without the oaRustCore wheel)
 ```

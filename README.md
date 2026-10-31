@@ -39,7 +39,7 @@ versioned file-job envelope) and the Python package **`apk_wireless_import`** (`
 | `SRC/python/` | The package `apk-wireless-import` (`apk_wireless_import`): `MARKER_HEADERS`, `Lifecycle`, `log`; its tests in `SRC/python/tests/`. Taken by the IAS, PDF and Shure Python edges. |
 | `SRC/check.sh` | Every check here in one command: `cargo test --workspace --locked` and both pytest suites. |
 | `test_data/` | Fixtures: `report.csv`, `report_converted.csv`, `venue.csv`, `venue_data.csv`, `venue_converted.csv`, `SB PDF.csv`, and a Lectrosonics programming guide PDF. |
-| `IMPORT:file:CSV/` | The Python edge (`oaFileImportCSV`) from the desktop app this was lifted out of — see below. |
+| `IMPORT.file.CSV/` | The Python edge (`oaFileImportCSV`) from the desktop app this was lifted out of — see below. |
 | `SRC/` | The worker crate `apk-worker-wireless-csv` (PLAN-3423.01): links `importer/` and `kernel/` by path (workspace members) and answers jobs on the bus. |
 | `Docker/` | The worker's `Dockerfile` (context `SRC/`) and `docker-compose.yml` (project `workers`, container `Worker-WIRELESS_CSV`), `include:`d by `PODS/POD.workers/Docker/docker-compose.yml`. |
 
@@ -133,7 +133,7 @@ found no frequency on any line and wrote `No Match` into every FREQ cell; its so
 kept. The importer is right to drop every row: `No Match` is not a 100–3000 MHz frequency. The
 same coordination report, converted correctly, is `report.csv`.
 
-### `IMPORT:file:CSV/` (Python)
+### `IMPORT.file.CSV/` (Python)
 
 `Entry.py` and `FileReaders/from_csv_unknown.py` expose `convert_unknown_csv_report()`, which
 calls `oaRustCore.csv_parser.convert_csv_unknown` and raises `RuntimeError` if it is not
@@ -141,14 +141,14 @@ importable — there is no Python CSV parser, on purpose. `Methods/csv_parser.py
 unguarded. Logging and the lifecycle come from `apk_wireless_import` (`SRC/python/`), whose
 `log` falls back to a no-op without `oaLogging`; `Entry.py` declares `STATUS` ("live" /
 "unavailable") and its `run_tests()` runs a two-row file through the parser — never True for
-having run nothing. `convert_csv_unknown` (`NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs`,
+having run nothing. `convert_csv_unknown` (`NODE.BareMetal/SRC/Core/CORE.engine.RUST/PARSER/csv_parser.rs`,
 built into the `oaRustCore` wheel) does not parse: it runs `parse_and_classify_csv` from
 `apkaudio-wireless-csv` — the same parser as every other caller — and returns `(headers, rows)`
 with the columns `ZONE, GROUP, DEVICE, NAME, FREQ_MHZ, BAND`. A file with no record is an
 `OSError`, never an empty list.
 
 ```bash
-cd "IMPORT:file:CSV" && python3 -m pytest -q Tests        # conftest puts ../SRC/python on sys.path unless installed
+cd "IMPORT.file.CSV" && python3 -m pytest -q Tests        # conftest puts ../SRC/python on sys.path unless installed
 ```
 
 The folder name is not a Python identifier, so `Tests/conftest.py` puts the package root on
@@ -189,7 +189,7 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
   left empty "rather than invented" (`StandardRfRecord`), and so is any zone/group/device/name
   cell the file left empty (`classify_csv_str`; it once filled `N/A`, `Generic RF`, `CH_<n>`).
 - **One parser, no silent fallback.** The Python edge refuses to run without the Rust parser
-  rather than quietly producing different records (`IMPORT:file:CSV/Entry.py`,
+  rather than quietly producing different records (`IMPORT.file.CSV/Entry.py`,
   `FileReaders/from_csv_unknown.py`, `Methods/csv_parser.py`; tested by
   `Tests/test_negative_paths.py`).
 - **A failing fixture fails the run.** `SRC/importer/tests/fixtures.rs` asserts each count

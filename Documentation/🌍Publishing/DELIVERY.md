@@ -12,7 +12,7 @@ This repo ships in three places, none with a page of its own (no live URL):
 
 Remote: `https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV.git` (no workflow of its own).
 
-**Tested:** by hand, one command — `bash SRC/check.sh`: `cargo test --workspace --locked` in `SRC/` (worker 8, parser 2 + fixtures 2, kernel 8 — 2026-10-30), `pytest IMPORT:file:CSV/Tests SRC/python/tests` (12 passed, 3 skipped without the `oaRustCore` wheel). MANAGEMENT.DataMigration's `tests/frame_headers.rs` holds the records to the Data Migration frames. The worker's self-test runs a five-row CSV through `handle_job` at start-up. `.apk.scripts/smoke.py` checks only that HEAD is pushed ([SMOKE](../%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)).
+**Tested:** by hand, one command — `bash SRC/check.sh`: `cargo test --workspace --locked` in `SRC/` (worker 8, parser 2 + fixtures 2, kernel 8 — 2026-10-30), `pytest IMPORT.file.CSV/Tests SRC/python/tests` (12 passed, 3 skipped without the `oaRustCore` wheel). MANAGEMENT.DataMigration's `tests/frame_headers.rs` holds the records to the Data Migration frames. The worker's self-test runs a five-row CSV through `handle_job` at start-up. `.apk.scripts/smoke.py` checks only that HEAD is pushed ([SMOKE](../%F0%9F%A7%A9Manual%20and%20Artifacts/SMOKE.md)).
 
 **Not automated:** no CI runs any of these tests (the root CI verifies nothing on purpose; `SRC/check.sh` is the pre-push check); the `oaRustCore` wheel the Python edge needs is built by hand (`maturin build` in `NODE.BareMetal/SRC/Core`). The fixture tests publish nothing, so they are safe on a rig in use.
 

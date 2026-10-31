@@ -5,7 +5,7 @@
 # Best-effort CSV conversion for unknown header formats, by the Rust parser.
 #
 # There is no Python parser and no fallback: `oaRustCore.csv_parser` (built from
-# NODE.BareMetal/SRC/Core/CORE:engine:RUST/PARSER/csv_parser.rs) is the one
+# NODE.BareMetal/SRC/Core/CORE.engine.RUST/PARSER/csv_parser.rs) is the one
 # implementation. Without it this raises — the same rule as `Entry.py` and
 # `Methods/csv_parser.py`. It used to log "Falling back to slow Python parsing"
 # and then call a name that was never bound, so the warning described a fallback

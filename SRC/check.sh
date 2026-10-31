@@ -11,4 +11,4 @@ set -euo pipefail
 cd "$(dirname "$0")"
 cargo test --workspace --locked
 cd ..
-python3 -m pytest -q "IMPORT:file:CSV/Tests" SRC/python/tests -p no:cacheprovider
+python3 -m pytest -q "IMPORT.file.CSV/Tests" SRC/python/tests -p no:cacheprovider

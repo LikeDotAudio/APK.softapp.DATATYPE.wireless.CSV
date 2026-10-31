@@ -2,7 +2,7 @@
 # MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 # Tests/conftest.py — make the importer importable where it actually lives.
 #
-# The folder is spelled `IMPORT:file:CSV`, which is not a Python identifier, so the
+# The folder is spelled `IMPORT.file.CSV`, which is not a Python identifier, so the
 # package cannot be imported by name. The tests used to import `oaFileImportCSV.…`,
 # the name it had in the desktop app it was lifted out of, which resolves nowhere in
 # this tree. Instead the package root goes on sys.path and the tests import its
