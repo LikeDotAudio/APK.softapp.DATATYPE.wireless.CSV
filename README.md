@@ -169,8 +169,6 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
 - **The bus is the API.** The importer's output reaches other apps as the worker's answer on
   `APK.audio/System/Protocols/wireless_csv/incoming/result` (a topic built by the contract's
   `baremetal_io::module_result`), never published by the parser itself.
-- **Topics come from the contract, never typed out** (`apkaudio_contracts::topics::data_migration`,
-  comment above `csv_importer_mqtt_topic()`).
 - **Do not invent a value.** Only the Soundbase layout has a band column; for the others `band` is
   left empty "rather than invented" (`StandardRfRecord`), and so is any zone/group/device/name
   cell the file left empty (`classify_csv_str`; it once filled `N/A`, `Generic RF`, `CH_<n>`).

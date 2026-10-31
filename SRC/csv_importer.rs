@@ -10,7 +10,6 @@ use csv::ReaderBuilder;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use apkaudio_contracts::topics;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RecognizedCsvPattern {
@@ -38,20 +37,11 @@ pub struct CsvRecognizedResult {
     pub source_file: String,
     pub pattern: RecognizedCsvPattern,
     pub pattern_name: String,
-    pub mqtt_topic: String,
     pub total_records: usize,
     /// Data rows that yielded no record: unreadable, too short, or no
     /// frequency in range. A blank line is not counted.
     pub skipped_rows: usize,
     pub records: Vec<StandardRfRecord>,
-}
-
-/// `APK.audio/System/DataMigration/CSV/ImportedData`, built from the contract
-/// rather than typed out — see `contracts/rust/src/topics.rs`, whose own header
-/// names the DataMigration importers as the literals it exists to replace.
-pub fn csv_importer_mqtt_topic() -> String {
-    topics::data_migration("CSV", "ImportedData")
-        .expect("CSV/ImportedData are literal segments the contract accepts")
 }
 
 pub fn parse_and_classify_csv(file_path: impl AsRef<Path>) -> Result<CsvRecognizedResult, String> {
@@ -182,7 +172,6 @@ pub fn classify_csv_str(content: &str, source_name: &str) -> Result<CsvRecognize
         source_file: source_name.to_string(),
         pattern,
         pattern_name: pattern_name.to_string(),
-        mqtt_topic: csv_importer_mqtt_topic(),
         total_records: records.len(),
         skipped_rows,
         records,
