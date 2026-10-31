@@ -10,7 +10,7 @@ Wireless-coordination CSV import: recognise one of three layouts (Soundbase, Zon
 | Talks to | How (topic / endpoint / file / import) | Relationship |
 |---|---|---|
 | Browser Data Migration frame (WEB.Frontend-Assets `3_Data_Migration/4_CSV`) | `APK.audio/System/Protocols/wireless_csv/outgoing/job` → `…/incoming/result` (`schema: 1`); `…/incoming/api` retained | Published Language (bus) |
-| APK.plugin.SDK (`apk-plugin-runner`, `apkaudio-contracts`) | Cargo `git … tag = "sdk-v0.6"`, pinned in Cargo.lock; job loop `apk_plugin_runner::jobs::JobWorker` | Conformist, by version |
+| APK.plugin.SDK (`apk-plugin-runner`, `apkaudio-contracts`) | Cargo `git … tag = "sdk-v0.7"`, pinned in Cargo.lock; job loop `apk_plugin_runner::jobs::JobWorker` | Conformist, by version |
 | DATATYPE.wireless.IAS / .SOUNDbase / .SHUREwirelessWorkbench | depend on `SRC/kernel` (`apkaudio-wireless-kernel`) by git rev | Supplier (shared kernel, one-way) |
 | MANAGEMENT.DataMigration | depends on `SRC/importer` (`apkaudio-wireless-csv`) by git rev | Supplier (crate) |
 | IAS / PDF / Shure Python edges | `apk_wireless_import` (`SRC/python`, package `apk-wireless-import`) | Supplier (package) |

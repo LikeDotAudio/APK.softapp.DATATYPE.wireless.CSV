@@ -26,7 +26,7 @@ Who depends on whom (all one-way):
 DATATYPE.wireless.{IAS,SOUNDbase,SHUREwirelessWorkbench}/SRC ──git rev──▶ SRC/kernel (apkaudio-wireless-kernel)
 MANAGEMENT.DataMigration ──git rev──▶ SRC/importer (apkaudio-wireless-csv)
 the IAS / PDF / Shure Python edges ──package──▶ SRC/python (apk_wireless_import)
-SRC (worker) ──path──▶ SRC/importer, SRC/kernel ; ──SDK tag sdk-v0.6──▶ apk-plugin-runner, apkaudio-contracts
+SRC (worker) ──path──▶ SRC/importer, SRC/kernel ; ──SDK tag sdk-v0.7──▶ apk-plugin-runner, apkaudio-contracts
 ```
 
 | Pattern | Recognised by | Read |
