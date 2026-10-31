@@ -107,7 +107,7 @@ shape, without `schema` or `result`.)
   published SDK tag carries `apk_plugin_runner::jobs`. The runtime is `debian:bookworm-slim`, user
   `worker` (uid 10001). Compose runs it `read_only`, `cap_drop: [ALL]`, no published port, on
   the `workers` network plus `apk-audio_default` to reach the broker as `broker:1883`.
-  The healthcheck is the runner's `apk-plugin-health`, compiled from the runner's source file.
+  The healthcheck is `apk-plugin-health`, one line over `apk_plugin_runner::health_check()`.
 
 ```bash
 bash SRC/check.sh                                                             # every check, cargo + pytest

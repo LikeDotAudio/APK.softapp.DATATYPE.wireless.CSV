@@ -20,7 +20,7 @@ Wireless-coordination CSV import: recognise one of three layouts (Soundbase, Zon
 ## Scorecard
 | Category | Score (0–3) | Finding |
 |---|---|---|
-| Coupling & Cohesion | 2 | SDK by tag, no path into another repo's crate, the parser a crate with one owner; still a `[[bin]]` compiled from the runner's source file (waiting on the runner) and a repo-root image context until an SDK tag carries `jobs` |
+| Coupling & Cohesion | 2 | SDK by tag, no path into another repo's crate, the parser a crate with one owner; a repo-root image context until an SDK tag carries `jobs` |
 | Boundary Integrity | 3 | Parser is pure; the wire answer is versioned (`schema`) and its shape is pinned by a test |
 | Duplication Control | 3 | The job loop is the runner's; the band rule, status word and envelope are the kernel's, used by all four wireless workers |
 | Testing & Contracts | 3 | `SRC/check.sh`: worker, parser fixtures, kernel and both pytest suites; result shape test; DataMigration's frame-header contract test |
@@ -28,8 +28,7 @@ Wireless-coordination CSV import: recognise one of three layouts (Soundbase, Zon
 Score key: 3 meets the standard · 2 minor gaps · 1 significant gaps · 0 absent / violated.
 
 ## Findings
-1. **The health probe is compiled from the runner's source file.** `SRC/Cargo.toml` `[[bin]] apk-plugin-health` `path = "../../../../../POD.THICK/DISCOVERY.Engine/SRC/RUNNER/src/bin/apk-plugin-health.rs"`. Waiting on DISCOVERY.Engine (handoff filed: `apk_plugin_runner::health_check()`), after which the bin is one line here.
-2. **The image still builds from the monorepo root.** `Docker/Dockerfile` COPYs `contracts/` and `DISCOVERY.Engine/SRC/RUNNER` and patches the SDK to them, because `sdk-v0.5` predates `apk_plugin_runner::jobs`. Needs owner: publish the next SDK tag; the four COPYs and two `--config` lines then go.
-3. **Good: one parser, no side effects.** `SRC/importer/src/lib.rs` `classify_csv_str` is pure; the Python edge refuses to run without the Rust parser.
-4. **Good: worker hardening.** Compose runs `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, no port; image runs as uid 10001; oversize jobs are refused (`config.ini` `max_job_bytes`).
-5. **Good: topics pinned by test.** `job_and_result_topics_are_this_modules` asserts the exact job/result topic strings from the contracts helpers.
+1. **The image still builds from the monorepo root.** `Docker/Dockerfile` COPYs `contracts/` and `DISCOVERY.Engine/SRC/RUNNER` and patches the SDK to them, because `sdk-v0.5` predates `apk_plugin_runner::jobs`. Needs owner: publish the next SDK tag; the four COPYs and two `--config` lines then go.
+2. **Good: one parser, no side effects.** `SRC/importer/src/lib.rs` `classify_csv_str` is pure; the Python edge refuses to run without the Rust parser.
+3. **Good: worker hardening.** Compose runs `read_only`, `cap_drop: [ALL]`, `no-new-privileges`, no port; image runs as uid 10001; oversize jobs are refused (`config.ini` `max_job_bytes`).
+4. **Good: topics pinned by test.** `job_and_result_topics_are_this_modules` asserts the exact job/result topic strings from the contracts helpers.
