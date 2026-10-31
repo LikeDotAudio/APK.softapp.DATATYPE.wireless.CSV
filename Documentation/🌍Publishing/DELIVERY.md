@@ -16,6 +16,11 @@ Remote: `https://github.com/LikeDotAudio/APK.softapp.DATATYPE.wireless.CSV.git` 
 
 **Not automated:** no CI runs any of these tests (the root CI verifies nothing on purpose; `SRC/check.sh` is the pre-push check); the `oaRustCore` wheel the Python edge needs is built by hand (`maturin build` in `NODE.BareMetal/SRC/Core`). The fixture tests publish nothing, so they are safe on a rig in use.
 
+## Delivered 2026-10-31: portable file names (no `:` `|` or case twins)
+
+- The monorepo now checks out on Windows and macOS: no tracked name holds `<>:"|?*`, a trailing dot or space, a device name or a case-only twin. Colon folders became dot folders (the POD.x convention).
+- Renamed: `IMPORT:file:CSV` → `IMPORT.file.CSV` (loaded by file path, so nothing imports the folder name). References to NODE.BareMetal `CORE.engine.RUST` / `TEST.runner.PYTHON` follow.
+
 ## Delivered from the 2026-10-30 audit
 
 - **Job loop from the runner** — `SRC/src/lib.rs` `run_job_agent` is now `apk_plugin_runner::jobs::JobWorker` (session, ConnAck resubscribe, lane thread, busy answer); the hand-built rumqttc session, credentials, packet size and publish are gone, and so is the same loop in the IAS, SOUNDbase and SHUREwirelessWorkbench workers. Verified by `cargo test --workspace` in `SRC/` (8 worker tests, self test included).
