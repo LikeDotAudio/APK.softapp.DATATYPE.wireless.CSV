@@ -19,11 +19,10 @@ name: workers
 services:
   wireless-csv:
     build:
-      # The repo root, counted from THIS file's real path (PODS/README.md
-      # rule 2): Docker → DATATYPE.wireless.CSV → DATATYPE → Softapps →
-      # POD.THIN → PODS → root.
-      context: "../../../../../.."
-      dockerfile: "PODS/POD.THIN/Softapps/DATATYPE/DATATYPE.wireless.CSV/Docker/Dockerfile"
+      # This repository's SRC/ (2026-10-30 audit): the crate's dependencies are
+      # pinned git sources, so the image needs nothing else from the monorepo.
+      context: "../SRC"
+      dockerfile: "../Docker/Dockerfile"
     image: worker-wireless-csv:local
     container_name: Worker-WIRELESS_CSV
     restart: unless-stopped

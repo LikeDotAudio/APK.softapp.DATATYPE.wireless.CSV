@@ -4,12 +4,10 @@
 # Every check this repository owns, in one command (2026-10-30 audit: "add CI"
 # — the root CI verifies nothing on purpose, so this is what runs before a push).
 #   bash SRC/check.sh
-# The worker, the parser crate and the wireless kernel (cargo, against the
-# checkout's runner/contracts through SRC/.cargo/config.toml in the monorepo),
-# then the Python edge and the shared apk_wireless_import package.
+# The worker, the parser crate and the wireless kernel (cargo), then the
+# Python edge and the shared apk_wireless_import package.
 set -euo pipefail
-# From SRC/ itself: cargo finds .cargo/config.toml from the working directory,
-# not from --manifest-path.
+# Against the published SDK tag and pinned git sources in Cargo.lock.
 cd "$(dirname "$0")"
 cargo test --workspace --locked
 cd ..

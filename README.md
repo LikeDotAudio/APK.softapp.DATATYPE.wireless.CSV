@@ -41,7 +41,7 @@ versioned file-job envelope) and the Python package **`apk_wireless_import`** (`
 | `test_data/` | Fixtures: `report.csv`, `report_converted.csv`, `venue.csv`, `venue_data.csv`, `venue_converted.csv`, `SB PDF.csv`, and a Lectrosonics programming guide PDF. |
 | `IMPORT:file:CSV/` | The Python edge (`oaFileImportCSV`) from the desktop app this was lifted out of — see below. |
 | `SRC/` | The worker crate `apk-worker-wireless-csv` (PLAN-3423.01): links `importer/` and `kernel/` by path (workspace members) and answers jobs on the bus. |
-| `Docker/` | The worker's `Dockerfile` (repo-root context) and `docker-compose.yml` (project `workers`, container `Worker-WIRELESS_CSV`), `include:`d by `PODS/POD.workers/Docker/docker-compose.yml`. |
+| `Docker/` | The worker's `Dockerfile` (context `SRC/`) and `docker-compose.yml` (project `workers`, container `Worker-WIRELESS_CSV`), `include:`d by `PODS/POD.workers/Docker/docker-compose.yml`. |
 
 ### `SRC/importer/` (`apkaudio-wireless-csv`)
 
@@ -101,17 +101,15 @@ shape, without `schema` or `result`.)
   self-test door and the retained self-description at `wireless_csv/incoming/api`.
 - `SRC/src/self_test.rs` runs a five-row CSV through `handle_job` and expects 4 records.
 - The crate names `apk-plugin-runner` and `apkaudio-contracts` from APK.plugin.SDK by tag
-  (`sdk-v0.5`), like the THICK plugins. In the monorepo `SRC/.cargo/config.toml` (git-excluded)
-  patches both to the checkout; the image (`Docker/Dockerfile`) passes the same two patches as
-  `--config`, which is why it still builds from the repo root. A standalone clone builds once a
-  published SDK tag carries `apk_plugin_runner::jobs`. The runtime is `debian:bookworm-slim`, user
+  (`sdk-v0.7`), like the THICK plugins; Cargo.lock pins the git sources, and the image
+  (`Docker/Dockerfile`) builds from this repository's `SRC/` alone. The runtime is `debian:bookworm-slim`, user
   `worker` (uid 10001). Compose runs it `read_only`, `cap_drop: [ALL]`, no published port, on
   the `workers` network plus `apk-audio_default` to reach the broker as `broker:1883`.
   The healthcheck is `apk-plugin-health`, one line over `apk_plugin_runner::health_check()`.
 
 ```bash
 bash SRC/check.sh                                                             # every check, cargo + pytest
-docker compose -f PODS/POD.workers/Docker/docker-compose.yml up -d --build    # from the repo root
+docker compose -f PODS/POD.workers/Docker/docker-compose.yml up -d --build    # from the monorepo root (the pod aggregator)
 mosquitto_pub -h 127.0.0.1 -t APK.audio/System/Protocols/wireless_csv/outgoing/job \
   -m '{"job_id":"t1","filename":"x.csv","text":"ZONE,GROUP,DEVICE,NAME,FREQ\nA,G,D,N,566.6\n"}'
 ```

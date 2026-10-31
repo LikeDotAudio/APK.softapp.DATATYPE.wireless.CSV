@@ -16,13 +16,12 @@
 # a broken worker never fails the plugin build and the reverse. `importer/` and
 # `kernel/` are members because they are path dependencies below this root.
 #
-# THE SDK BY TAG, like every THICK plugin (2026-10-30 audit): runner and
-# contracts come from APK.plugin.SDK `sdk-v0.5`. In the monorepo,
-# `.cargo/config.toml` beside this file (kept out of git by .git/info/exclude)
-# patches both back to the checkout, and the Dockerfile passes the same two
-# entries as `--config`, so no build fetches GitHub and the lockfile records
-# path packages. A standalone clone builds once the next SDK tag carries
-# `apk_plugin_runner::jobs` (publishing a tag is the owner's).
+# THE SDK BY TAG, like every THICK plugin: runner and contracts come from
+# APK.plugin.SDK by tag (`sdk-v0.7`; jobs arrived in `sdk-v0.6`).
+# This crate builds from its own repository: Cargo.lock records those git
+# sources, and the image builds from `SRC/` alone. To build against a local
+# checkout of the runner instead, add a git-excluded `.cargo/config.toml` with
+# a [patch] (the plugin_standalone.py shape) — and do not commit the lock it writes.
 [package]
 name = "apk-worker-wireless-csv"
 version = "0.2.0"
@@ -35,8 +34,8 @@ name = "apk_worker_wireless_csv"
 path = "src/lib.rs"
 
 [dependencies]
-apk-plugin-runner = { git = "https://github.com/LikeDotAudio/APK.plugin.SDK", tag = "sdk-v0.6" }
-apkaudio-contracts = { git = "https://github.com/LikeDotAudio/APK.plugin.SDK", tag = "sdk-v0.6" }
+apk-plugin-runner = { git = "https://github.com/LikeDotAudio/APK.plugin.SDK", tag = "sdk-v0.7" }
+apkaudio-contracts = { git = "https://github.com/LikeDotAudio/APK.plugin.SDK", tag = "sdk-v0.7" }
 apkaudio-wireless-csv = { path = "importer" }
 apkaudio-wireless-kernel = { path = "kernel", features = ["worker"] }
 serde_json = "1"
