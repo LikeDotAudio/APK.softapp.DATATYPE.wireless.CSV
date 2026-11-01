@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apk-wireless-import"
-version = "0.1.0"
+version = "2.0.0"
 description = "MARKER_HEADERS, the stateless importer lifecycle and the logging call shared by the APK.audio wireless importers' Python edges."
 requires-python = ">=3.9"
 license = { text = "MIT" }

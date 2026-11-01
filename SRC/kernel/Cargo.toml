@@ -17,7 +17,7 @@
 # and oaRustCore link); the workers take it with `worker`.
 [package]
 name = "apkaudio-wireless-kernel"
-version = "0.2.0"
+version = "2.0.0"
 edition = "2021"
 
 [features]
