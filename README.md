@@ -159,6 +159,25 @@ venue fixture, a missing file, a malformed row, and a refusal when the parser is
 
 ---
 
+### Its carriers on the bus (ROAD-3519)
+
+Every carrier an imported file names is also said as a `Device/` row, with PLUGIN.WIFI's leaf
+names, so EDITORS.WirelessBuddy's Discovered panel lists it beside the Wi-Fi radios:
+
+```text
+APK.audio/System/Protocols/wireless_csv/Device/<id>/{name, device_class, frequency_mhz, channel, band,
+    model, manufacturer, device, zone, group, source_file}     unkept, again every restate_s (30 s)
+APK.audio/Discovery/wireless_csv/<deviceId>                           presence, the runner's (presence::seen)
+```
+
+`device_class` is `Wireless Transmitter` (the transmitter on that frequency); a field the file
+does not carry is `-`. Identity is never an address: one record is one carrier. A CSV carries no serial, so the id is formed from `source file | zone | group | device | channel name`; `channel` is the channel name (the CSV has no channel number) and `band` the band column, else the ITU band of the frequency (`UHF`) for the ZONE/GROUP/DEVICE/NAME/FREQ exports, which have none. That text, numbered `#n` where it
+repeats, is hashed — `deviceId = wireless_csv:plan:<fnv1a64>`, `<id>` = the same as one topic segment
+(`wireless_csv_plan_<hex>`) — so the same file imported again lands on the same ids. A file's carriers
+last until the same file name is imported again (dropped carriers are said gone at once) or the
+worker restarts; presence then says them offline after `presence_inactive_after_s` (90 s). Code:
+`SRC/src/carriers.rs`, `carriers_of` in `SRC/src/lib.rs`. Measured 2026-11-04 on the bench: `test_data/venue.csv` sent as a job put 253 carriers under `wireless_csv/Device/` (253 `frequency_mhz` leaves) and 253 online presence documents.
+
 ## 🚀 Usage & Integration
 * **Web Portal Entry**: none of its own. The records are drawn (from the worker's `incoming/result`) by the Data Migration frame
   `PODS/POD.THIN/WEB.Frontend-Assets/SRC/FrontEnd/Gui_Frames/3_Data_Migration/4_CSV/CSV_Importer.json`.

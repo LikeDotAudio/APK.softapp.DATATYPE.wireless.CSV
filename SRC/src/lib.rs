@@ -21,6 +21,7 @@
 //! Workbench workers.
 
 pub use apkaudio_wireless_csv as csv_importer;
+pub mod carriers;
 pub mod self_test;
 
 use apkaudio_wireless_kernel::job;
@@ -51,6 +52,47 @@ pub fn handle_job(payload: &[u8], max_bytes: usize) -> Value {
     }
 }
 
+/// The carriers a CSV import names (ROAD-3519). One record is one carrier.
+/// A CSV carries no serial, so the id is formed (src/carriers.rs) from
+/// `source file | zone | group | device | channel name`, numbered `#n` in file
+/// order where those repeat (an unnamed row is common). `channel` is the
+/// file's channel name; the CSV has no channel number, model or maker, and
+/// a CSV with no band column gets the ITU band of the frequency.
+pub fn carriers_of(answer: &Value) -> Option<(String, Vec<carriers::Carrier>)> {
+    if answer["ok"] != true {
+        return None;
+    }
+    let result = &answer["result"];
+    let file = text(result, "source_file").to_string();
+    let list = result["records"].as_array()?.iter().filter_map(|r| {
+        Some(carriers::Carrier {
+            unit: carriers::Carrier::unit_of(&[&file, text(r, "zone"), text(r, "group"), text(r, "device"), text(r, "channel_name")]),
+            name: text(r, "channel_name").into(),
+            frequency_mhz: r["frequency_mhz"].as_f64()?,
+            channel: text(r, "channel_name").into(),
+            band: text(r, "band").into(),
+            model: String::new(),
+            manufacturer: String::new(),
+            device: text(r, "device").into(),
+            zone: text(r, "zone").into(),
+            group: text(r, "group").into(),
+            source_file: file.clone(),
+        })
+    });
+    Some((file.clone(), carriers::number_units(list.collect())))
+}
+
+/// A text field of a result row; empty when absent.
+fn text<'a>(row: &'a Value, key: &str) -> &'a str {
+    row[key].as_str().unwrap_or("")
+}
+
+/// The carriers of every imported file, restated as a Device/ tree and
+/// sighted for presence (src/carriers.rs). Blocking, beside the job loop.
+pub fn run_device_agent(host: &str, port: u16) {
+    carriers::run(MODULE, host, port, carriers::restate_s(CONFIG_INI, MODULE, 30));
+}
+
 /// The job loop: the runner's. Blocking; the runner starts it on its own
 /// thread and exits the process if it ever returns, so Docker restarts it.
 pub fn run_job_agent(host: &str, port: u16) {
@@ -58,7 +100,12 @@ pub fn run_job_agent(host: &str, port: u16) {
     apk_plugin_runner::jobs::JobWorker::new(MODULE, TOOL, move |payload: &[u8]| {
         // One job taken off outgoing/job and run: this worker's packet (ROAD-3472).
         apk_plugin_runner::loopback::packet_received();
-        handle_job(payload, max)
+        let answer = handle_job(payload, max);
+        // Its carriers on the bus as a Device/ tree (ROAD-3519).
+        if let Some((file, list)) = carriers_of(&answer) {
+            carriers::imported(&file, list);
+        }
+        answer
     })
         // A job is a file, and base64 grows it by a third.
         .max_packet(max / 3 * 4 + 64 * 1024)
@@ -171,5 +218,37 @@ mod tests {
         let (result, retain) = baremetal_io::module_result(MODULE).unwrap();
         assert_eq!(result, "APK.audio/System/Protocols/wireless_csv/incoming/result");
         assert!(!retain);
+    }
+    /// ROAD-3519: every carrier of the fixture becomes a Device/ row with
+    /// PLUGIN.WIFI's leaf names, under an id formed from the file, not an address.
+    #[test]
+    fn the_fixture_puts_every_carrier_under_device() {
+        let out = handle_job(&job(json!({"job_id": "d", "filename": "venue.csv", "text": VENUE})), 1 << 24);
+        assert_eq!(out["ok"], true, "{out}");
+        let (file, list) = carriers_of(&out).expect("an ok answer has carriers");
+        assert_eq!(file, "venue.csv");
+        assert_eq!(list.len() as u64, out["result"]["total_records"].as_u64().unwrap());
+        assert!(!list.is_empty());
+        let ids: std::collections::BTreeSet<String> = list.iter().map(|c| c.device_id(MODULE)).collect();
+        assert_eq!(ids.len(), list.len(), "every carrier its own id");
+        let mut bands = 0;
+        for c in &list {
+            let f = c.fields(MODULE);
+            let get = |leaf: &str| f.iter().find(|(t, _)| t.ends_with(&format!("/{leaf}"))).map(|(_, v)| v.clone()).unwrap();
+            assert!(f[0].0.starts_with("APK.audio/System/Protocols/wireless_csv/Device/wireless_csv_plan_"), "{}", f[0].0);
+            assert_eq!(get("device_class"), "Wireless Transmitter");
+            let mhz: f64 = get("frequency_mhz").parse().unwrap();
+            assert!(mhz > 100.0 && mhz < 3000.0, "{mhz}");
+            assert!(!get("channel").is_empty() && !get("name").is_empty());
+            if get("band") != "-" {
+                bands += 1;
+            }
+            assert!(c.device_id(MODULE).starts_with("wireless_csv:plan:"));
+        }
+        assert!(bands > 0, "the band leaf is said (the file's, else the ITU band)");
+        // The same file again lands on the same ids.
+        let (_, again) = carriers_of(&handle_job(&job(json!({"job_id": "d", "filename": "venue.csv", "text": VENUE})), 1 << 24)).unwrap();
+        assert_eq!(again.iter().map(|c| c.device_id(MODULE)).collect::<Vec<_>>(), list.iter().map(|c| c.device_id(MODULE)).collect::<Vec<_>>());
+        assert!(carriers_of(&handle_job(b"not json", 1 << 24)).is_none(), "a failed job names no carrier");
     }
 }
